@@ -5,6 +5,7 @@ import { Model } from '../types';
 
 interface ExploreProps {
   onModelClick: (model: Model, isWorkspace: boolean) => void;
+  language: 'en' | 'zh';
 }
 
 const SkeletonCard: React.FC<{ height: number }> = ({ height }) => (
@@ -28,7 +29,6 @@ const ModelCard: React.FC<{ model: Model; onClick: (model: Model) => void; index
       onClick={() => onClick(model)}
     >
       <div className={`relative w-full overflow-hidden bg-neutral-900/50 ${aspectClass} ${minHeight}`}>
-        {/* Loading Placeholder */}
         {!loaded && (
           <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-900 animate-pulse" />
         )}
@@ -52,25 +52,33 @@ const ModelCard: React.FC<{ model: Model; onClick: (model: Model) => void; index
       </div>
 
       <div className="px-4 py-4 bg-neutral-900/95 backdrop-blur-md border-t border-white/5 shrink-0">
-        <h3 className="text-[10px] font-black uppercase tracking-tight truncate text-white leading-tight mb-1">{model.title}</h3>
-        <p className="text-[8px] text-neutral-500 font-black uppercase tracking-widest truncate opacity-60">{model.author.name}</p>
+        <h3 className="text-[10px] font-black uppercase tracking-tight truncate text-white leading-tight">{model.title}</h3>
       </div>
     </div>
   );
 };
 
-const Explore: React.FC<ExploreProps> = ({ onModelClick }) => {
+const Explore: React.FC<ExploreProps> = ({ onModelClick, language }) => {
   const [activeChannel, setActiveChannel] = useState(EXPLORE_CHANNELS[0]);
   const [loading, setLoading] = useState(true);
   const activeTabRef = useRef<HTMLButtonElement>(null);
   
-  // Refs for drag functionality
   const horizontalScrollRef = useRef<HTMLDivElement>(null);
   const verticalScrollRef = useRef<HTMLDivElement>(null);
   
-  // Drag state
   const isDragging = useRef(false);
   const startPos = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+
+  const channelMap: Record<string, { en: string; zh: string }> = {
+    'Featured': { en: 'Featured', zh: '精品' },
+    'Trending': { en: 'Trending', zh: '热门' },
+    '3D Print': { en: '3D Print', zh: '3D打印' },
+    'Fantasy': { en: 'Fantasy', zh: '幻想' },
+    'Kids': { en: 'Kids', zh: '儿童' },
+    'Character': { en: 'Character', zh: '角色' },
+    'Detailed': { en: 'Detailed', zh: '精细' },
+    'Most Downloads': { en: 'Most Downloads', zh: '最多下载' }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -98,7 +106,6 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick }) => {
     }
   }, [activeChannel]);
 
-  // Handle Mouse Drag for Horizontal Scroll
   const handleHorizontalMouseDown = (e: React.MouseEvent) => {
     const slider = horizontalScrollRef.current;
     if (!slider) return;
@@ -117,11 +124,10 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick }) => {
     if (!isDragging.current || !horizontalScrollRef.current) return;
     e.preventDefault();
     const x = e.pageX - horizontalScrollRef.current.offsetLeft;
-    const walk = (x - startPos.current.x) * 2; // Scroll speed multiplier
+    const walk = (x - startPos.current.x) * 2;
     horizontalScrollRef.current.scrollLeft = startPos.current.scrollLeft - walk;
   };
 
-  // Handle Mouse Drag for Vertical Scroll
   const handleVerticalMouseDown = (e: React.MouseEvent) => {
     const container = verticalScrollRef.current;
     if (!container) return;
@@ -155,9 +161,7 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick }) => {
     }
   };
 
-  // Helper to distinguish tap from drag
   const handleChannelClick = (channel: string, e: React.MouseEvent) => {
-    // If mouse moved more than 5px, it's a drag, not a click
     const moveX = Math.abs((e.pageX - (horizontalScrollRef.current?.offsetLeft || 0)) - startPos.current.x);
     if (moveX > 5) return;
     setActiveChannel(channel);
@@ -175,7 +179,6 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick }) => {
       onMouseUp={handleGlobalMouseUp}
       onMouseLeave={handleGlobalMouseUp}
     >
-      {/* Horizontal Nav */}
       <div className="sticky top-0 bg-black/95 backdrop-blur-xl border-b border-white/10 z-[60] pt-4 pb-1">
         <div 
           ref={horizontalScrollRef}
@@ -192,7 +195,7 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick }) => {
                 activeChannel === channel ? 'text-[#D0F870]' : 'text-neutral-500 hover:text-neutral-300'
               }`}
             >
-              {channel}
+              {channelMap[channel]?.[language] || channel}
               {activeChannel === channel && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#D0F870] rounded-full shadow-[0_0_12px_rgba(208,248,112,0.8)]" />
               )}
@@ -202,7 +205,6 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick }) => {
         </div>
       </div>
 
-      {/* Vertical Grid */}
       <div 
         ref={verticalScrollRef}
         onMouseDown={handleVerticalMouseDown}

@@ -7,15 +7,34 @@ interface LayoutProps {
   children: React.ReactNode;
   activeTab: NavTab;
   onTabChange: (tab: NavTab) => void;
+  language: 'en' | 'zh';
+  hideNav?: boolean;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, language, hideNav }) => {
+  const t = {
+    en: {
+      explore: 'Explore',
+      assets: 'Assets',
+      create: 'Create',
+      subscribe: 'Subscribe',
+      me: 'Me'
+    },
+    zh: {
+      explore: '发现',
+      assets: '我的资产',
+      create: '制作',
+      subscribe: '订阅',
+      me: '我的'
+    }
+  }[language];
+
   const tabs = [
-    { id: NavTab.EXPLORE, icon: Compass, label: 'Explore' },
-    { id: NavTab.ASSETS, icon: FolderOpen, label: 'Assets' },
-    { id: NavTab.CREATE, icon: Plus, label: 'Create', isSpecial: true },
-    { id: NavTab.SUBSCRIBE, icon: CreditCard, label: 'Subscribe' },
-    { id: NavTab.ME, icon: User, label: 'Me' },
+    { id: NavTab.EXPLORE, icon: Compass, label: t.explore },
+    { id: NavTab.ASSETS, icon: FolderOpen, label: t.assets },
+    { id: NavTab.CREATE, icon: Plus, label: t.create, isSpecial: true },
+    { id: NavTab.SUBSCRIBE, icon: CreditCard, label: t.subscribe },
+    { id: NavTab.ME, icon: User, label: t.me },
   ];
 
   return (
@@ -25,7 +44,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
       </main>
 
       {/* Fixed Sci-Fi Bottom Nav */}
-      <nav className="absolute bottom-0 w-full bg-black/95 backdrop-blur-3xl border-t border-white/5 flex justify-around items-end pt-4 pb-12 px-2 z-50 h-28">
+      <nav className={`absolute bottom-0 w-full bg-black/95 backdrop-blur-3xl border-t border-white/5 flex justify-around items-end pt-4 pb-12 px-2 z-50 h-28 transition-all duration-300 ${hideNav ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;

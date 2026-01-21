@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Type, Image as ImageIcon, Sparkles, Zap, Camera, ListChecks, CheckCircle2, X, Plus, Upload, Clock } from 'lucide-react';
 import { GenerationTask, Model } from '../types';
 import { MOCK_MODELS, MESH_CREDIT_ICON } from '../constants';
@@ -14,6 +14,7 @@ interface CreateProps {
   onUpgradeTrigger: () => void;
   initialMode?: 'image3d' | 'genImage';
   initialRefImage?: string | null;
+  language: 'en' | 'zh';
 }
 
 const Create: React.FC<CreateProps> = ({ 
@@ -25,15 +26,21 @@ const Create: React.FC<CreateProps> = ({
   onTaskImageClick,
   onUpgradeTrigger,
   initialMode = 'image3d', 
-  initialRefImage 
+  initialRefImage,
+  language
 }) => {
   const [tab, setTab] = useState<'image3d' | 'genImage'>(initialMode as any);
   const [prompt, setPrompt] = useState('');
+  const [isPromptError, setIsPromptError] = useState(false);
   const [refImage, setRefImage] = useState<string | null>(initialRefImage || null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const tasksSectionRef = useRef<HTMLElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
   const [tasks, setTasks] = useState<GenerationTask[]>([
-    { id: 't-completed-model', type: 'Model', status: 'completed', progress: 100, thumbnail: 'https://picsum.photos/seed/panda1/200/200', title: 'Ancient Panda', createdAt: '10:45 AM' },
-    { id: 't-completed-image', type: 'Image', status: 'completed', progress: 100, thumbnail: 'https://picsum.photos/seed/fantasy_i-done/200/200', title: 'Mythic Citadel', createdAt: '09:30 AM' },
-    { id: 't-processing', type: 'Model', status: 'processing', progress: 65, thumbnail: 'https://picsum.photos/seed/panda2/200/200', title: 'Panda Alpha', createdAt: '11:05 AM' },
+    { id: 't-completed-model', type: 'Model', status: 'completed', progress: 100, thumbnail: 'https://picsum.photos/seed/panda1/200/200', title: 'Ancient Panda', createdAt: 'Mar 24, 10:45 AM' },
+    { id: 't-completed-image', type: 'Image', status: 'completed', progress: 100, thumbnail: 'https://picsum.photos/seed/fantasy_i-done/200/200', title: 'Mythic Citadel', createdAt: 'Mar 24, 09:30 AM' },
+    { id: 't-processing', type: 'Model', status: 'processing', progress: 65, thumbnail: 'https://picsum.photos/seed/panda2/200/200', title: 'Panda Alpha', createdAt: 'Mar 24, 11:05 AM' },
   ]);
 
   useEffect(() => {
@@ -41,13 +48,54 @@ const Create: React.FC<CreateProps> = ({
     if (initialRefImage) setRefImage(initialRefImage);
   }, [initialMode, initialRefImage]);
 
-  const handleGenerate = () => {
+  const handleCapture = async () => {
     if (!isLoggedIn) {
       onLoginTrigger();
       return;
     }
     
-    const cost = tab === 'image3d' ? 30 : 5;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(track => track.stop());
+      setRefImage('https://picsum.photos/seed/captured_proto/400/400');
+    } catch (err) {
+      console.error("Camera access failed:", err);
+      alert("Camera permission is required to capture images for 3D generation.");
+    }
+  };
+
+  const handleUploadClick = () => {
+    if (!isLoggedIn) {
+      onLoginTrigger();
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setRefImage(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGenerate = () => {
+    if (!isLoggedIn) {
+      onLoginTrigger();
+      return;
+    }
+
+    if (tab === 'genImage' && !prompt.trim()) {
+      setIsPromptError(true);
+      setTimeout(() => setIsPromptError(false), 1000);
+      return;
+    }
+    
+    const cost = tab === 'image3d' ? 25 : 5;
     
     if (credits < cost) {
       onUpgradeTrigger();
@@ -56,7 +104,9 @@ const Create: React.FC<CreateProps> = ({
     setCredits(credits - cost);
     
     const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const fullTimeStr = `${dateStr}, ${timeStr}`;
     
     const newTask: GenerationTask = {
       id: Date.now().toString(),
@@ -65,9 +115,14 @@ const Create: React.FC<CreateProps> = ({
       progress: 0,
       thumbnail: refImage || (tab === 'image3d' ? 'https://picsum.photos/seed/panda_new/200/200' : 'https://picsum.photos/seed/new_fantasy/200/200'),
       title: tab === 'image3d' ? 'New Panda Model' : prompt.slice(0, 15) || 'Neural Visual',
-      createdAt: timeStr
+      createdAt: fullTimeStr
     };
+    
     setTasks([newTask, ...tasks]);
+
+    setTimeout(() => {
+      tasksSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const handleTaskClick = (task: GenerationTask) => {
@@ -80,6 +135,9 @@ const Create: React.FC<CreateProps> = ({
       onTaskImageClick(task.thumbnail, task.title);
     }
   };
+
+  const isImg3D = tab === 'image3d';
+  const themeTextColor = isImg3D ? 'text-[#D0F870]' : 'text-[#C084FC]';
 
   return (
     <div className="flex flex-col h-full bg-meshy-dark">
@@ -96,25 +154,28 @@ const Create: React.FC<CreateProps> = ({
         </div>
         
         <div className="flex p-1 bg-neutral-900 border border-white/5 rounded-2xl">
-          {[
-            { id: 'image3d', label: 'Image to 3D', icon: ImageIcon },
-            { id: 'genImage', label: 'Generate Image', icon: Type },
-          ].map(m => (
-            <button 
-              key={m.id}
-              onClick={() => setTab(m.id as any)}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                tab === m.id ? 'bg-[#D0F870] text-black shadow-lg shadow-[#D0F870]/20' : 'text-neutral-500 hover:text-neutral-300'
-              }`}
-            >
-              <m.icon size={12} />
-              {m.label}
-            </button>
-          ))}
+          <button 
+            onClick={() => setTab('image3d')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+              tab === 'image3d' ? 'bg-[#D0F870] text-black shadow-lg shadow-[#D0F870]/20' : 'text-neutral-500 hover:text-neutral-300'
+            }`}
+          >
+            <ImageIcon size={12} />
+            Image to 3D
+          </button>
+          <button 
+            onClick={() => setTab('genImage')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+              tab === 'genImage' ? 'bg-[#C084FC] text-black shadow-lg shadow-[#C084FC]/20' : 'text-neutral-500 hover:text-neutral-300'
+            }`}
+          >
+            <Type size={12} />
+            Generate Image
+          </button>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-40">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 space-y-12 pb-40 scroll-smooth">
         <section className="animate-in fade-in duration-500">
           {tab === 'image3d' ? (
             <div className="space-y-6">
@@ -133,12 +194,25 @@ const Create: React.FC<CreateProps> = ({
                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Neural Source Required</p>
                     </div>
                     <div className="grid grid-cols-2 w-full gap-3 mt-1">
-                       <button className="h-14 bg-neutral-900 border border-white/5 rounded-2xl text-[9px] font-black uppercase tracking-widest text-white flex items-center justify-center gap-2 active:scale-95 active:bg-neutral-800 transition-all shadow-lg">
+                       <button 
+                         onClick={handleCapture}
+                         className="h-14 bg-neutral-900 border border-white/5 rounded-2xl text-[9px] font-black uppercase tracking-widest text-white flex items-center justify-center gap-2 active:scale-95 active:bg-neutral-800 transition-all shadow-lg"
+                       >
                          <Camera size={18} className="text-[#D0F870]" /> Capture
                        </button>
-                       <button className="h-14 bg-[#D0F870]/10 border border-[#D0F870]/20 rounded-2xl text-[9px] font-black uppercase tracking-widest text-[#D0F870] flex items-center justify-center gap-2 active:scale-95 active:bg-[#D0F870]/20 transition-all shadow-lg">
+                       <button 
+                         onClick={handleUploadClick}
+                         className="h-14 bg-[#D0F870]/10 border border-[#D0F870]/20 rounded-2xl text-[9px] font-black uppercase tracking-widest text-[#D0F870] flex items-center justify-center gap-2 active:scale-95 active:bg-[#D0F870]/20 transition-all shadow-lg"
+                       >
                          <Upload size={18} /> Upload
                        </button>
+                       <input 
+                         type="file" 
+                         ref={fileInputRef} 
+                         className="hidden" 
+                         accept="image/*" 
+                         onChange={handleFileChange}
+                       />
                     </div>
                   </div>
                 )}
@@ -150,7 +224,7 @@ const Create: React.FC<CreateProps> = ({
                    <div className="w-[1px] h-3 bg-neutral-800" />
                    <div className="flex items-center gap-1.5">
                       <img src={MESH_CREDIT_ICON} className="w-4 h-4 object-contain shadow-[0_0_8px_rgba(251,146,60,0.4)]" alt="M" />
-                      <span>30</span>
+                      <span className="text-[#D0F870]">25</span>
                    </div>
                 </div>
                 <button onClick={handleGenerate} className="w-full bg-[#D0F870] py-5 rounded-[28px] font-black text-sm uppercase tracking-[0.25em] text-black shadow-[0_15px_30px_rgba(208,248,112,0.2)] active:scale-95 transition-all flex items-center justify-center gap-3">
@@ -158,9 +232,9 @@ const Create: React.FC<CreateProps> = ({
                 </button>
                 <button 
                   onClick={() => setTab('genImage')}
-                  className="mt-6 text-[9px] font-bold text-neutral-500 uppercase tracking-[0.15em] hover:text-[#D0F870] transition-colors"
+                  className="mt-6 text-[9px] font-bold text-neutral-500 uppercase tracking-[0.15em] hover:text-[#C084FC] transition-colors"
                 >
-                  no image? <span className="underline decoration-[#D0F870]/40 underline-offset-4">click here to generate image first.</span>
+                  no image? <span className="underline decoration-[#C084FC]/40 underline-offset-4">click here to generate image first.</span>
                 </button>
               </div>
             </div>
@@ -168,7 +242,7 @@ const Create: React.FC<CreateProps> = ({
             <div className="space-y-6">
                <div className="relative">
                   <textarea 
-                     className="w-full h-36 bg-neutral-950/40 border border-white/5 rounded-[36px] p-7 text-xs text-white placeholder:text-neutral-800 outline-none focus:border-[#D0F870]/40 transition-all duration-500"
+                     className={`w-full h-36 bg-neutral-950/40 border rounded-[36px] p-7 text-xs text-white placeholder:text-neutral-800 outline-none focus:border-[#C084FC]/40 transition-all duration-500 ${isPromptError ? 'border-rose-500/80 bg-rose-500/10 shadow-[0_0_15px_rgba(244,63,94,0.2)]' : 'border-white/5'}`}
                      placeholder="Describe your mythic visual concept..."
                      value={prompt}
                      onChange={(e) => setPrompt(e.target.value)}
@@ -176,37 +250,40 @@ const Create: React.FC<CreateProps> = ({
                </div>
                <div className="flex items-center justify-between bg-neutral-900/30 p-5 rounded-[32px] border border-white/5">
                  <div className="space-y-0.5">
-                   <p className="text-[9px] font-black uppercase tracking-widest text-white">Neural Bias Image</p>
-                   <p className="text-[7px] font-bold text-neutral-600 uppercase">Optional guidance</p>
+                   <p className="text-[9px] font-black uppercase tracking-widest text-white">add reference image to edit</p>
+                   <p className="text-[7px] font-bold text-neutral-600 uppercase">(optional)</p>
                  </div>
                  <button onClick={() => setRefImage('https://picsum.photos/seed/panda3/200/200')} className="w-14 h-14 bg-neutral-900 rounded-[20px] flex items-center justify-center border border-white/10 text-neutral-700 overflow-hidden active:scale-90 transition-all shadow-inner">
-                    {refImage ? <img src={refImage} className="w-full h-full object-cover" /> : <Plus size={24}/>}
+                    {refImage ? <img src={refImage} className="w-full h-full object-cover" /> : <Plus size={24} className="text-[#C084FC]"/>}
                  </button>
                </div>
-               <div className="flex flex-col">
+               <div className="flex flex-col items-center">
                   <div className="flex items-center justify-center gap-4 text-neutral-400 text-[10px] font-bold uppercase tracking-widest mb-2">
                     <span>15 sec</span>
                     <div className="w-[1px] h-3 bg-neutral-800" />
                     <div className="flex items-center gap-1.5">
                         <img src={MESH_CREDIT_ICON} className="w-4 h-4 object-contain" alt="M" />
-                        <span>5</span>
+                        <span className="text-[#C084FC]">5</span>
                     </div>
                   </div>
-                  <button onClick={handleGenerate} className="w-full bg-[#D0F870] py-5 rounded-[28px] font-black text-sm uppercase tracking-[0.25em] text-black active:scale-95 transition-all shadow-[0_20px_40px_rgba(208,248,112,0.15)] flex items-center justify-center gap-3">
+                  <button onClick={handleGenerate} className="w-full bg-[#C084FC] py-5 rounded-[28px] font-black text-sm uppercase tracking-[0.25em] text-black active:scale-95 transition-all shadow-[0_20px_40px_rgba(192,132,252,0.15)] flex items-center justify-center gap-3">
                     <Sparkles size={18} className="text-black" /> Generate Image
                   </button>
+                  <p className="mt-3 text-[9px] font-bold text-neutral-500 uppercase tracking-widest">
+                    AI Model: Nano Banana Pro
+                  </p>
                </div>
             </div>
           )}
         </section>
 
         {isLoggedIn && (
-          <section className="space-y-5 animate-in slide-in-from-bottom-4 duration-500">
+          <section ref={tasksSectionRef} className="space-y-5 animate-in slide-in-from-bottom-4 duration-500 pt-4">
             <div className="flex items-center justify-between px-2">
               <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-500 flex items-center gap-2.5">
-                <ListChecks size={13} className="text-[#D0F870]" /> Recent Tasks/Generation
+                <ListChecks size={13} className={themeTextColor} /> Recent Tasks/Generation
               </h3>
-              <span className="text-[7px] font-black text-neutral-700 uppercase tracking-[0.2em]">{tasks.length} SYNCED</span>
+              <span className="text-[7px] font-black text-neutral-700 uppercase tracking-[0.2em]">{tasks.length} TASKS</span>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -220,24 +297,21 @@ const Create: React.FC<CreateProps> = ({
                       <img src={task.thumbnail} className={`w-full h-full object-cover transition-all duration-700 ${task.status === 'processing' ? 'opacity-20 blur-sm' : 'opacity-100 group-hover:scale-110'}`} />
                       {task.status === 'processing' && (
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-8 h-8 border-2 border-[#D0F870]/10 border-t-[#D0F870] rounded-full animate-spin" />
+                          <div className={`w-8 h-8 border-2 ${task.type === 'Model' ? 'border-[#D0F870]/10 border-t-[#D0F870]' : 'border-[#C084FC]/10 border-t-[#C084FC]'} rounded-full animate-spin`} />
                         </div>
                       )}
                     </div>
                     <div className="px-1 space-y-1.5">
                       <div className="flex justify-between items-center">
-                         <span className="text-[6px] font-black text-[#D0F870] uppercase tracking-widest">{task.type}</span>
+                         <span className={`text-[6px] font-black uppercase tracking-widest ${task.type === 'Model' ? 'text-[#D0F870]' : 'text-[#C084FC]'}`}>{task.type}</span>
                          <span className="text-[8px] font-black text-white/90 truncate max-w-[65px] uppercase tracking-tighter">{task.title}</span>
                       </div>
                       {task.status === 'processing' ? (
                          <div className="h-1 w-full bg-neutral-800/50 rounded-full overflow-hidden">
-                            <div className="h-full bg-[#D0F870] animate-pulse" style={{width: `${task.progress}%`}} />
+                            <div className={`h-full animate-pulse ${task.type === 'Model' ? 'bg-[#D0F870]' : 'bg-[#C084FC]'}`} style={{width: `${task.progress}%`}} />
                          </div>
                       ) : (
-                         <div className="flex items-center justify-between text-[7px] font-black uppercase">
-                            <div className="flex items-center gap-1 text-green-500">
-                               <CheckCircle2 size={9} /> Sync
-                            </div>
+                         <div className="flex items-center justify-end text-[7px] font-black uppercase">
                             {task.createdAt && (
                               <div className="text-neutral-600 flex items-center gap-1">
                                  <Clock size={8} /> {task.createdAt}
@@ -249,6 +323,10 @@ const Create: React.FC<CreateProps> = ({
                  </div>
                ))}
             </div>
+            
+            <p className="text-[8px] font-bold text-neutral-600 uppercase tracking-widest text-center px-4 leading-relaxed mt-2">
+              Recent task only shows tasks from the past week, please visit the asset page for more history.
+            </p>
           </section>
         )}
       </div>

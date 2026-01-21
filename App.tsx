@@ -17,6 +17,7 @@ import { CheckCircle2 } from 'lucide-react';
 const App: React.FC = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState<NavTab>(NavTab.EXPLORE);
+  const [language, setLanguage] = useState<'en' | 'zh'>('en');
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [isWorkspaceMode, setIsWorkspaceMode] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ url: string; title: string } | null>(null);
@@ -28,10 +29,13 @@ const App: React.FC = () => {
   const [tempSubscribeClose, setTempSubscribeClose] = useState(false);
   const [showPrintPage, setShowPrintPage] = useState(false);
   const [previousTab, setPreviousTab] = useState<NavTab>(NavTab.EXPLORE);
+  const [isViewerLoading, setIsViewerLoading] = useState(false);
   
-  // Track if viewer hint has been shown this session
-  const [hasSeenViewerHint, setHasSeenViewerHint] = useState(false);
-  
+  // Persistent hint state
+  const [hasSeenViewerHint, setHasSeenViewerHint] = useState<boolean>(() => {
+    return localStorage.getItem('meshy_has_seen_viewer_hint') === 'true';
+  });
+
   const [createInitialMode, setCreateInitialMode] = useState<'image3d' | 'genImage'>('image3d');
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
 
@@ -76,6 +80,7 @@ const App: React.FC = () => {
   };
 
   const handleUpgradeTrigger = () => {
+    // Save current state and switch to subscription mode
     setPreviousTab(activeTab);
     setActiveTab(NavTab.SUBSCRIBE);
     setTempSubscribeClose(true);
@@ -93,10 +98,29 @@ const App: React.FC = () => {
     setActiveTab(NavTab.EXPLORE);
   };
 
+  const handleConfirmSuccess = () => {
+    setShowSuccessModal(false);
+    // Return to the previous tab/page after subscription
+    if (tempSubscribeClose) {
+      setActiveTab(previousTab);
+      setTempSubscribeClose(false);
+    }
+  };
+
+  const handleHintShown = () => {
+    setHasSeenViewerHint(true);
+    localStorage.setItem('meshy_has_seen_viewer_hint', 'true');
+  };
+
   const renderContent = () => {
+    // If it's a triggered subscription, we render it as a top-level overlay instead of inside the Layout
+    if (activeTab === NavTab.SUBSCRIBE && tempSubscribeClose) {
+      return null;
+    }
+
     switch (activeTab) {
       case NavTab.EXPLORE:
-        return <Explore onModelClick={(m) => handleOpenModel(m, false)} />;
+        return <Explore onModelClick={(m) => handleOpenModel(m, false)} language={language} />;
       case NavTab.ASSETS:
         return (
           <Assets 
@@ -105,7 +129,12 @@ const App: React.FC = () => {
             onGenerate3D={handleGenerate3D}
             onEditImage={handleEditImage}
             onImageClick={(url, title) => setSelectedImage({ url, title })}
-            onNavigateToCreate={() => handleTabChange(NavTab.CREATE)}
+            onNavigateToCreate={(mode) => {
+              if (mode) setCreateInitialMode(mode);
+              setReferenceImage(null);
+              handleTabChange(NavTab.CREATE);
+            }}
+            language={language}
           />
         );
       case NavTab.CREATE:
@@ -120,6 +149,7 @@ const App: React.FC = () => {
             onUpgradeTrigger={handleUpgradeTrigger}
             initialMode={createInitialMode} 
             initialRefImage={referenceImage}
+            language={language}
           />
         );
       case NavTab.SUBSCRIBE:
@@ -134,12 +164,9 @@ const App: React.FC = () => {
             }} 
             credits={credits}
             setCredits={setCredits}
-            showCloseButton={tempSubscribeClose}
-            onClose={() => {
-              setActiveTab(previousTab);
-              setTempSubscribeClose(false);
-            }}
+            showCloseButton={false}
             onLoginTrigger={handleLoginTrigger}
+            language={language}
           />
         );
       case NavTab.ME:
@@ -151,6 +178,8 @@ const App: React.FC = () => {
             onLoginClick={handleLoginTrigger}
             onLogout={handleLogout}
             onUpgradeTrigger={handleUpgradeTrigger}
+            language={language}
+            onLanguageChange={setLanguage}
           />
         );
       default:
@@ -158,20 +187,28 @@ const App: React.FC = () => {
     }
   };
 
+  const t = {
+    en: {
+      successTitle: 'Transmission Sync',
+      successText: 'Payment completed. +1000 credits has been added and unlock features.',
+      confirm: 'Confirm Protocol'
+    },
+    zh: {
+      successTitle: '传输同步完成',
+      successText: '支付成功。+1000 积分已到账，所有高级功能已解锁。',
+      confirm: '确认协议'
+    }
+  }[language];
+
   return (
     <div className="flex items-center justify-center bg-[#E6E8E3] min-h-screen">
-      {/* iPhone Simulation */}
       <div className="w-[387px] h-[839px] bg-meshy-dark border-[8px] border-neutral-900 rounded-[58px] relative overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.3)] flex flex-col">
-        
-        {/* Splash Screen - Placed inside simulation for absolute masking */}
         {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
 
-        {/* Dynamic Island */}
         <div className="absolute top-2 left-1/2 -translate-x-1/2 w-28 h-8 bg-black rounded-3xl z-[60] flex items-center justify-center">
            <div className="w-1.5 h-1.5 bg-zinc-800 rounded-full ml-auto mr-3" />
         </div>
 
-        {/* Status Bar */}
         <div className="h-12 w-full flex items-end justify-between px-10 pb-2 text-white font-black text-[10px] z-[55] pointer-events-none tracking-tight">
           <span>9:41</span>
           <div className="flex gap-1.5 items-center">
@@ -183,17 +220,20 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <Layout activeTab={activeTab} onTabChange={handleTabChange}>
+        <Layout activeTab={activeTab} onTabChange={handleTabChange} language={language} hideNav={isViewerLoading}>
           {renderContent()}
         </Layout>
 
-        {selectedModel && activeTab !== NavTab.SUBSCRIBE && (
+        {selectedModel && (
           <ModelViewer 
             model={selectedModel} 
             isLoggedIn={isLoggedIn}
             isSubscribed={isSubscribed}
             isWorkspaceMode={isWorkspaceMode}
-            onClose={() => setSelectedModel(null)}
+            onClose={() => {
+              setSelectedModel(null);
+              setIsViewerLoading(false);
+            }}
             onRemix={handleRemix}
             onLoginTrigger={handleLoginTrigger}
             onUpgradeTrigger={handleUpgradeTrigger}
@@ -202,8 +242,34 @@ const App: React.FC = () => {
               setShowPrintPage(true);
             }}
             hasSeenHint={hasSeenViewerHint}
-            onHintShown={() => setHasSeenViewerHint(true)}
+            onHintShown={handleHintShown}
+            onLoadingChange={setIsViewerLoading}
+            language={language}
           />
+        )}
+
+        {/* Triggered Subscription Modal Overlay (Ensures it appears ABOVE the model viewer) */}
+        {activeTab === NavTab.SUBSCRIBE && tempSubscribeClose && (
+          <div className="absolute inset-0 z-[350] bg-black animate-in slide-in-from-bottom duration-500">
+            <Subscription 
+              isLoggedIn={isLoggedIn}
+              isSubscribed={isSubscribed} 
+              onSubscribeSuccess={() => {
+                setIsSubscribed(true);
+                setCredits(prev => prev + 1000);
+                setShowSuccessModal(true);
+              }} 
+              credits={credits}
+              setCredits={setCredits}
+              showCloseButton={true}
+              onClose={() => {
+                setActiveTab(previousTab);
+                setTempSubscribeClose(false);
+              }}
+              onLoginTrigger={handleLoginTrigger}
+              language={language}
+            />
+          </div>
         )}
 
         {selectedImage && (
@@ -212,15 +278,17 @@ const App: React.FC = () => {
             onClose={() => setSelectedImage(null)}
             onGenerate3D={handleGenerate3D}
             onEditImage={handleEditImage}
+            language={language}
           />
         )}
 
-        {showPrintPage && <PrintPage onClose={() => setShowPrintPage(false)} />}
+        {showPrintPage && <PrintPage onClose={() => setShowPrintPage(false)} language={language} />}
         
         {showLoginModal && (
           <LoginModal 
             onClose={() => setShowLoginModal(false)} 
             onLoginSuccess={handleLoginSuccess} 
+            language={language}
           />
         )}
 
@@ -233,14 +301,13 @@ const App: React.FC = () => {
                    <CheckCircle2 size={40} className="text-black" />
                 </div>
                 <div className="text-center space-y-3">
-                   <h2 className="text-xl font-black text-white uppercase tracking-tighter">Transmission Sync</h2>
+                   <h2 className="text-xl font-black text-white uppercase tracking-tighter">{t.successTitle}</h2>
                    <p className="text-neutral-300 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
-                     Payment completed. <br/>
-                     <span className="text-[#D0F870] font-black">+1000 credits</span> has been added into your account and unlock all advanced features.
+                     {t.successText}
                    </p>
                 </div>
-                <button onClick={() => setShowSuccessModal(false)} className="w-full bg-[#D0F870] py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-black active:scale-95 transition-all shadow-lg shadow-[#D0F870]/20">
-                  Confirm Protocol
+                <button onClick={handleConfirmSuccess} className="w-full bg-[#D0F870] py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-black active:scale-95 transition-all shadow-lg shadow-[#D0F870]/20">
+                  {t.confirm}
                 </button>
              </div>
           </div>

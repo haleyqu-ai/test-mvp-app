@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Check, Crown, Sparkles, Zap, Loader2, X, ListTodo, ShieldCheck, Lock, User } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Check, Crown, Sparkles, Zap, Loader2, X, ListTodo, ShieldCheck, Lock, User, Percent } from 'lucide-react';
 import { MESH_CREDIT_ICON } from '../constants';
 
 interface SubscriptionProps {
@@ -12,6 +12,7 @@ interface SubscriptionProps {
   showCloseButton?: boolean;
   onClose?: () => void;
   onLoginTrigger: () => void;
+  language: 'en' | 'zh';
 }
 
 const Subscription: React.FC<SubscriptionProps> = ({ 
@@ -22,12 +23,70 @@ const Subscription: React.FC<SubscriptionProps> = ({
   setCredits, 
   showCloseButton, 
   onClose,
-  onLoginTrigger
+  onLoginTrigger,
+  language
 }) => {
   const [isPaying, setIsPaying] = useState(false);
-  const [selectedPlanPrice, setSelectedPlanPrice] = useState('$20.00');
+  const [selectedPlanPrice, setSelectedPlanPrice] = useState('$10.00');
+  const [waitingPlan, setWaitingPlan] = useState<string | null>(null);
+  const proPlanRef = useRef<HTMLDivElement>(null);
+
+  const t = {
+    en: {
+      selectPlan: 'Select Plan',
+      unlock: 'Unlock full neural capacity',
+      freeTitle: 'Free',
+      freePrice: '$0',
+      freeSub: 'Entry level exploration',
+      proSub: 'advanced generation tools',
+      studioSub: 'Everything in Pro, plus:',
+      getPro: 'Get Pro Now',
+      getStudio: 'Get Studio',
+      recommended: 'Recommended',
+      promoTag: '50% OFF FIRST MONTH',
+      strikePrice: 'Was $20'
+    },
+    zh: {
+      selectPlan: '选择方案',
+      unlock: '开启全部神经算力',
+      freeTitle: '免费版',
+      freePrice: '¥0',
+      freeSub: '入门级探索',
+      proSub: '高级生成工具',
+      studioSub: 'Pro 版所有权益，以及：',
+      getPro: '立即获取 Pro',
+      getStudio: '获取 Studio',
+      recommended: '最受欢迎',
+      promoTag: '首月 5 折优惠',
+      strikePrice: '原价 $20'
+    }
+  }[language];
+
+  // Auto-resume subscription after login
+  useEffect(() => {
+    if (isLoggedIn && waitingPlan) {
+      handleSubscribe(waitingPlan);
+      setWaitingPlan(null);
+    }
+  }, [isLoggedIn, waitingPlan]);
+
+  // Default focus on Pro Plan when opening the page
+  useEffect(() => {
+    if (!isSubscribed) {
+      const timer = setTimeout(() => {
+        proPlanRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isSubscribed]);
 
   const handleSubscribe = (price: string) => {
+    if (!isLoggedIn) {
+      setWaitingPlan(price);
+      onLoginTrigger();
+      return;
+    }
+
     setSelectedPlanPrice(price);
     setIsPaying(true);
     setTimeout(() => {
@@ -37,41 +96,29 @@ const Subscription: React.FC<SubscriptionProps> = ({
   };
 
   const handleBuyCredits = (amount: number) => {
+    if (!isLoggedIn) {
+      onLoginTrigger();
+      return;
+    }
     setCredits(prev => (typeof prev === 'number' ? prev + amount : prev));
     alert(`Transmission complete. +${amount} Credits synced.`);
   };
 
-  const studioFeatures = [
-    '4,000 monthly credits recharge (up to 400 assets)',
-    '20 tasks in queue',
-    'Higher queue priority',
-    '8 free retries for each task',
+  const proFeatures = [
+    'advanced generation tools',
+    '1,000 monthly credits',
+    'Unlock all features on web & app',
+    '10 tasks in queue',
+    'High queue priority',
+    '4 free retries for each task'
   ];
 
-  if (!isLoggedIn) {
-    return (
-      <div className="px-8 py-16 flex flex-col items-center text-center h-full bg-meshy-dark justify-center">
-        <div className="w-24 h-24 bg-neutral-900 rounded-[36px] flex items-center justify-center border border-white/5 relative mb-8">
-          <Crown size={40} className="text-[#D0F870]" />
-          <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#D0F870] rounded-full flex items-center justify-center border-4 border-black text-black">
-            <Lock size={14} />
-          </div>
-        </div>
-        <div className="space-y-3 mb-10">
-          <h1 className="text-2xl font-black text-white uppercase tracking-tighter">Premium Access</h1>
-          <p className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest leading-relaxed px-10">
-            Sign in to access your credit buffer and manage neural tier subscriptions
-          </p>
-        </div>
-        <button 
-          onClick={onLoginTrigger}
-          className="w-full bg-[#D0F870] py-5 rounded-[28px] text-black font-black text-xs uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(208,248,112,0.2)] active:scale-95 transition-all"
-        >
-          Login to View Plans
-        </button>
-      </div>
-    );
-  }
+  const studioFeatures = [
+    '4,000 monthly credits',
+    '20 tasks in queue',
+    'Higher queue priority',
+    '8 free retries for each task'
+  ];
 
   if (isSubscribed) {
     return (
@@ -87,27 +134,27 @@ const Subscription: React.FC<SubscriptionProps> = ({
           </div>
         </header>
 
-        <div className="bg-gradient-to-br from-neutral-900 to-black border border-[#D0F870]/20 p-7 rounded-[40px] flex flex-col gap-6 relative overflow-hidden group">
+        <div className="bg-gradient-to-br from-purple-900/20 to-black border border-[#C084FC]/30 p-7 rounded-[40px] flex flex-col gap-6 relative overflow-hidden group">
            <div className="flex justify-between items-start z-10">
              <div>
                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Studio Tier</h3>
-               <p className="text-[#D0F870] text-[9px] font-black uppercase tracking-[0.2em]">Enterprise Neural Power</p>
+               <p className="text-[#C084FC] text-[9px] font-black uppercase tracking-[0.2em]">{t.studioSub}</p>
              </div>
-             <span className="text-2xl font-black text-white">$60<span className="text-[10px] text-[#D0F870] font-bold">/mo</span></span>
+             <span className="text-2xl font-black text-white">$60<span className="text-[10px] text-[#C084FC] font-bold">/mo</span></span>
            </div>
            
            <ul className="space-y-3 z-10">
               {studioFeatures.map(f => (
                 <li key={f} className="flex items-start gap-3 text-[10px] font-black uppercase text-white/80 leading-tight">
-                   <div className="p-1 bg-[#D0F870]/20 rounded-lg shrink-0">
-                      <ShieldCheck size={12} className="text-[#D0F870]" />
+                   <div className="p-1 bg-[#C084FC]/20 rounded-lg shrink-0">
+                      <Sparkles size={12} className="text-[#C084FC]" />
                    </div>
                    {f}
                 </li>
               ))}
            </ul>
 
-           <button className="bg-[#D0F870] py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-black shadow-xl shadow-[#D0F870]/20 active:scale-95 transition-all z-10">
+           <button className="bg-[#C084FC] py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-black shadow-xl shadow-[#C084FC]/20 active:scale-95 transition-all z-10">
              Upgrade Plan
            </button>
         </div>
@@ -144,83 +191,104 @@ const Subscription: React.FC<SubscriptionProps> = ({
   }
 
   return (
-    <div className="px-6 py-8 flex flex-col gap-6 h-full bg-meshy-dark overflow-y-auto pb-40 relative">
+    <div className="px-6 py-8 flex flex-col gap-6 h-full bg-meshy-dark overflow-y-auto pb-40 relative scroll-smooth">
       {showCloseButton && (
         <button 
           onClick={onClose}
-          className="absolute top-8 right-6 p-2 bg-neutral-900 rounded-full text-white active:scale-90"
+          className="absolute top-8 right-6 p-2 bg-neutral-900 rounded-full text-white active:scale-90 z-50"
         >
           <X size={20} />
         </button>
       )}
       
       <header className="text-center">
-        <h1 className="text-3xl font-black mb-1 uppercase tracking-tighter text-white">Select Path</h1>
-        <p className="text-neutral-500 text-[9px] font-black uppercase tracking-[0.25em]">Unlock full neural capacity</p>
+        <h1 className="text-3xl font-black mb-1 uppercase tracking-tighter text-white">{t.selectPlan}</h1>
+        <p className="text-neutral-500 text-[9px] font-black uppercase tracking-[0.25em]">{t.unlock}</p>
       </header>
 
       <div className="flex flex-col gap-6">
         {/* Free Plan */}
         <div className="bg-neutral-900/40 border border-white/5 rounded-[40px] p-7 flex flex-col gap-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-black uppercase tracking-tight text-neutral-400">Free</h2>
-            <span className="text-xl font-black text-neutral-500">$0</span>
+            <h2 className="text-lg font-black uppercase tracking-tight text-neutral-400">{t.freeTitle}</h2>
+            <span className="text-xl font-black text-neutral-500">{t.freePrice}</span>
           </div>
-          <p className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest">Entry level exploration</p>
+          <p className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest">{t.freeSub}</p>
           <ul className="space-y-2">
-            {['5 Monthly Credits', 'Standard Quality'].map(f => (
+            {['100 monthly credits', 'Standard Quality'].map(f => (
               <li key={f} className="flex items-center gap-2 text-[10px] font-bold uppercase text-neutral-500"><Check size={12} /> {f}</li>
             ))}
           </ul>
         </div>
 
         {/* Pro Plan */}
-        <div className="bg-neutral-950/60 backdrop-blur-md border-2 border-[#D0F870] rounded-[40px] p-7 flex flex-col gap-5 relative shadow-[0_0_30px_rgba(208,248,112,0.15)]">
-          <div className="absolute top-0 right-10 bg-[#D0F870] text-black text-[8px] font-black px-4 py-1 rounded-b-xl uppercase tracking-widest">Recommended</div>
-          <div className="flex justify-between items-center">
+        <div ref={proPlanRef} className="bg-neutral-950/60 backdrop-blur-md border-2 border-[#D0F870] rounded-[40px] p-7 flex flex-col gap-5 relative shadow-[0_0_30px_rgba(208,248,112,0.25)] ring-1 ring-[#D0F870]/20">
+          <div className="absolute top-0 right-10 bg-[#D0F870] text-black text-[8px] font-black px-4 py-1 rounded-b-xl uppercase tracking-widest z-10">{t.recommended}</div>
+          
+          {/* Promo Badge - Position updated to be closer to top border */}
+          <div className="absolute -left-2 top-3 rotate-[-12deg] bg-[#fbbf24] text-black text-[8px] font-black px-3 py-1.5 rounded-lg shadow-xl border border-black/10 flex items-center gap-1 animate-bounce z-10">
+            <Percent size={10} strokeWidth={3} />
+            {t.promoTag}
+          </div>
+
+          <div className="flex justify-between items-end">
             <h2 className="text-2xl font-black uppercase tracking-tight text-white flex items-center gap-2">
               Pro <Crown size={18} className="text-[#D0F870]" />
             </h2>
-            <span className="text-3xl font-black text-white">$20</span>
+            <div className="flex flex-col items-end">
+              <span className="text-xs font-bold text-neutral-500 line-through decoration-[#D0F870]/60 decoration-2">{t.strikePrice}</span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-black text-[#D0F870]">$10</span>
+                <span className="text-[10px] font-bold text-neutral-400 uppercase">/mo</span>
+              </div>
+            </div>
           </div>
-          <p className="text-[9px] font-black text-[#D0F870] uppercase tracking-widest">For serious 3D artists</p>
+
+          <p className="text-[9px] font-black text-[#D0F870] uppercase tracking-widest leading-tight">{t.proSub}</p>
+          
           <ul className="space-y-3">
-            {['1000 Monthly Credits', 'High Fidelity Output', 'Commercial Use'].map(f => (
-              <li key={f} className="flex items-center gap-3 text-[11px] font-black uppercase text-white"><Check size={14} className="text-[#D0F870]" /> {f}</li>
+            {proFeatures.map(f => (
+              <li key={f} className="flex items-start gap-3 text-[10px] font-black uppercase text-white leading-tight">
+                <Check size={14} className="text-[#D0F870] shrink-0 mt-0.5" /> 
+                {f}
+              </li>
             ))}
           </ul>
+
           <button 
-            onClick={() => handleSubscribe('$20.00')}
+            onClick={() => handleSubscribe('$10.00')}
             disabled={isPaying}
-            className="w-full py-5 rounded-[24px] bg-[#D0F870] text-sm font-black text-black shadow-xl shadow-[#D0F870]/20 active:scale-[0.97] transition-all flex items-center justify-center gap-3"
+            className="w-full py-5 rounded-[24px] bg-[#D0F870] text-sm font-black text-black shadow-xl shadow-[#D0F870]/20 active:scale-[0.97] transition-all flex items-center justify-center gap-3 mt-2"
           >
-            {isPaying && selectedPlanPrice === '$20.00' ? <Loader2 size={18} className="animate-spin" /> : <img src={MESH_CREDIT_ICON} className="w-5 h-5 object-contain invert" alt="" />}
-            Get Pro Now
+            {isPaying && selectedPlanPrice === '$10.00' ? <Loader2 size={18} className="animate-spin" /> : <img src={MESH_CREDIT_ICON} className="w-5 h-5 object-contain invert" alt="" />}
+            {t.getPro}
           </button>
         </div>
 
         {/* Studio Plan */}
-        <div className="bg-gradient-to-br from-neutral-900 to-black border border-[#D0F870]/30 rounded-[40px] p-7 flex flex-col gap-5 relative overflow-hidden group">
-          <div className="absolute top-0 right-10 bg-[#D0F870] text-black text-[8px] font-black px-4 py-1 rounded-b-xl uppercase tracking-widest">Enterprise</div>
+        <div className="bg-gradient-to-br from-purple-900/20 to-black border border-[#C084FC]/30 rounded-[40px] p-7 flex flex-col gap-5 relative overflow-hidden group">
           <div className="flex justify-between items-center relative z-10">
             <h2 className="text-2xl font-black uppercase tracking-tight text-white flex items-center gap-2">
-              Studio <ShieldCheck size={18} className="text-[#D0F870]" />
+              Studio <Sparkles size={18} className="text-[#C084FC]" />
             </h2>
             <span className="text-3xl font-black text-white">$60</span>
           </div>
-          <p className="text-[9px] font-black text-[#D0F870] uppercase tracking-widest relative z-10">Power user workstation</p>
+          <p className="text-[9px] font-black text-[#C084FC] uppercase tracking-widest relative z-10 leading-tight">{t.studioSub}</p>
           <ul className="space-y-3 relative z-10">
-            {['4000 Monthly Credits', 'Ultra High Fidelity', 'Highest Priority', 'Team Collaboration'].map(f => (
-              <li key={f} className="flex items-center gap-3 text-[11px] font-black uppercase text-white/90"><Check size={14} className="text-[#D0F870]" /> {f}</li>
+            {studioFeatures.map(f => (
+              <li key={f} className="flex items-start gap-3 text-[10px] font-black uppercase text-white/90 leading-tight">
+                <Check size={14} className="text-[#C084FC] shrink-0 mt-0.5" /> 
+                {f}
+              </li>
             ))}
           </ul>
           <button 
             onClick={() => handleSubscribe('$60.00')}
             disabled={isPaying}
-            className="w-full py-5 rounded-[24px] bg-neutral-800 border border-white/10 text-white text-sm font-black uppercase tracking-widest active:scale-[0.97] transition-all flex items-center justify-center gap-3 relative z-10"
+            className="w-full py-5 rounded-[24px] bg-[#C084FC] border border-white/10 text-black text-sm font-black uppercase tracking-widest active:scale-[0.97] transition-all flex items-center justify-center gap-3 relative z-10"
           >
-            {isPaying && selectedPlanPrice === '$60.00' ? <Loader2 size={18} className="animate-spin" /> : <img src={MESH_CREDIT_ICON} className="w-5 h-5 object-contain" alt="" />}
-            Get Studio
+            {isPaying && selectedPlanPrice === '$60.00' ? <Loader2 size={18} className="animate-spin" /> : <img src={MESH_CREDIT_ICON} className="w-5 h-5 object-contain invert" alt="" />}
+            {t.getStudio}
           </button>
         </div>
       </div>

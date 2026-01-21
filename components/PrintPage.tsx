@@ -7,52 +7,77 @@ interface PrintPageProps {
 }
 
 const PARTNERS = [
-  { name: 'Creality Cloud', icon: 'https://picsum.photos/seed/creality/60/60' },
-  { name: 'Bambu Handy', icon: 'https://picsum.photos/seed/bambu/60/60' },
-  { name: 'Prusa Connect', icon: 'https://picsum.photos/seed/prusa/60/60' },
-  { name: 'Anycubic Cloud', icon: 'https://picsum.photos/seed/anycubic/60/60' },
-  { name: 'Elegoo App', icon: 'https://picsum.photos/seed/elegoo/60/60' },
+  { 
+    name: 'CREALITY CLOUD', 
+    icon: 'https://picsum.photos/seed/creality_sky/200/200' // Night sky forest aesthetic
+  },
+  { 
+    name: 'BAMBU HANDY', 
+    icon: 'https://picsum.photos/seed/bambu_winter/200/200' // Snowy forest aesthetic
+  },
+  { 
+    name: 'PRUSA CONNECT', 
+    icon: 'https://picsum.photos/seed/prusa_sun/200/200' // Sunny golden hour aesthetic
+  },
+  { 
+    name: 'ANYCUBIC CLOUD', 
+    icon: 'https://picsum.photos/seed/anycubic_night/200/200' // Starry night water aesthetic
+  },
+  { 
+    name: 'ELEGOO APP', 
+    icon: 'https://picsum.photos/seed/elegoo_mist/200/200' // Foggy pine forest aesthetic
+  },
 ];
 
 const PrintPage: React.FC<PrintPageProps> = ({ onClose }) => {
   return (
-    <div className="absolute inset-0 z-[250] bg-black flex flex-col animate-in slide-in-from-bottom duration-500">
-      <header className="h-20 bg-neutral-900/50 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 pt-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
-            <Printer size={18} />
-          </div>
-          <h2 className="text-sm font-black uppercase tracking-widest text-white">3D Print Sync</h2>
-        </div>
-        <button onClick={onClose} className="p-2 bg-neutral-800 rounded-full text-neutral-400">
-          <X size={20} />
-        </button>
-      </header>
-
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 pb-20">
-        <div className="text-center py-4">
-          <p className="text-neutral-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Connect Your Hardware</p>
-          <h1 className="text-xl font-black text-white uppercase tracking-tight">Direct Manufacturing</h1>
+    <div className="absolute inset-0 z-[250] bg-black flex flex-col animate-in slide-in-from-bottom duration-500 overflow-hidden">
+      {/* Scrollable Container */}
+      <div className="flex-1 overflow-y-auto px-8 pt-20 pb-24 flex flex-col gap-10">
+        
+        {/* Header Section */}
+        <div className="text-center space-y-2">
+          <p className="text-neutral-500 text-[10px] font-black uppercase tracking-[0.4em]">Connect Your Hardware</p>
+          <h1 className="text-2xl font-black text-white uppercase tracking-tighter">Direct Manufacturing</h1>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        {/* Partners List */}
+        <div className="flex flex-col gap-4">
           {PARTNERS.map((partner) => (
-            <button key={partner.name} className="flex items-center justify-between bg-neutral-900 border border-white/5 p-4 rounded-3xl active:scale-[0.98] transition-all group">
-              <div className="flex items-center gap-4">
-                <img src={partner.icon} className="w-12 h-12 rounded-2xl bg-neutral-800" alt="" />
-                <span className="text-xs font-black uppercase tracking-widest text-neutral-200">{partner.name}</span>
+            <button 
+              key={partner.name} 
+              className="flex items-center justify-between bg-neutral-900/60 border border-white/5 p-5 rounded-[32px] active:scale-[0.98] transition-all group shadow-lg"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 rounded-[24px] overflow-hidden shadow-2xl border border-white/10 shrink-0">
+                   <img src={partner.icon} className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500 group-hover:scale-110" alt={partner.name} />
+                </div>
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/90 group-hover:text-white transition-colors">{partner.name}</span>
               </div>
-              <ExternalLink size={16} className="text-neutral-600 group-hover:text-blue-500 transition-colors" />
+              <div className="p-2.5 rounded-full text-neutral-600 group-hover:text-white group-hover:bg-white/5 transition-all">
+                <ExternalLink size={18} />
+              </div>
             </button>
           ))}
         </div>
 
-        <div className="mt-4 p-5 bg-blue-500/5 border border-blue-500/10 rounded-3xl">
-          <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest leading-relaxed text-center italic">
+        {/* Info Box */}
+        <div className="mt-4 p-7 bg-neutral-900/20 border border-white/5 rounded-[40px]">
+          <p className="text-[9px] text-neutral-600 font-bold uppercase tracking-[0.3em] leading-relaxed text-center italic">
             Meshy supports direct integration with top industrial slicing engines. Select your ecosystem to transmit neural data.
           </p>
         </div>
       </div>
+
+      {/* Static Navigation Controls */}
+      <div className="absolute top-6 left-0 right-0 flex justify-end px-8 z-50">
+        <button onClick={onClose} className="p-3 bg-neutral-900/80 backdrop-blur-xl border border-white/10 rounded-full text-white active:scale-90 transition-all shadow-xl">
+          <X size={20} />
+        </button>
+      </div>
+      
+      {/* Home Indicator Bottom Mask */}
+      <div className="h-10 w-full bg-black/50 backdrop-blur-sm pointer-events-none sticky bottom-0 z-50" />
     </div>
   );
 };

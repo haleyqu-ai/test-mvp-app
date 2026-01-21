@@ -4,8 +4,9 @@ import { Model, RenderMode } from '../types';
 import { 
   ArrowLeft, Share2, Download, Printer, Wand2, Maximize, X, 
   Box, RefreshCw, Lock, ChevronDown, RotateCcw, Sparkles, Info, Cpu, Layers, Activity, Zap, Move, Terminal, Image as ImageIcon,
-  Copy, MoreHorizontal, MessageCircle, Mail, Send, Airplay
+  Copy, MoreHorizontal, MessageCircle, Mail, Send, Airplay, MoveVertical
 } from 'lucide-react';
+import { MESH_CREDIT_ICON } from '../constants';
 
 interface ModelViewerProps {
   model: Model;
@@ -19,9 +20,59 @@ interface ModelViewerProps {
   onPrint: () => void;
   hasSeenHint?: boolean;
   onHintShown?: () => void;
+  onLoadingChange?: (loading: boolean) => void;
+  language: 'en' | 'zh';
 }
 
 const EXPORT_FORMATS = ['3mf', 'stl', 'fbx', 'obj', 'glb', 'usdz', 'Blend', 'Step'];
+
+const GestureHint: React.FC<{ language: 'en' | 'zh' }> = ({ language }) => {
+  const t = {
+    en: 'Pinch to Zoom • Drag to Rotate',
+    zh: '双指缩放 • 拖动旋转'
+  }[language];
+
+  return (
+    <div className="absolute inset-0 z-[140] pointer-events-none flex flex-col items-center justify-center animate-in fade-in duration-500">
+      <div className="bg-black/40 backdrop-blur-2xl border border-white/10 rounded-[40px] px-8 py-8 flex flex-col items-center gap-6 shadow-2xl">
+        <div className="flex items-center gap-10">
+          {/* Zoom Visual */}
+          <div className="relative w-14 h-14">
+            <div className="absolute top-1/2 left-1/2 w-4 h-4 border-2 border-[#D0F870] rounded-full -translate-x-6 -translate-y-2 animate-[pinch-out-1_2s_ease-in-out_infinite]" />
+            <div className="absolute top-1/2 left-1/2 w-4 h-4 border-2 border-[#D0F870] rounded-full translate-x-2 translate-y-2 animate-[pinch-out-2_2s_ease-in-out_infinite]" />
+          </div>
+          
+          <div className="w-[1px] h-8 bg-white/10" />
+
+          {/* Rotate Visual */}
+          <div className="relative w-14 h-14">
+            <div className="absolute top-1/2 left-1/2 w-5 h-5 border-2 border-white rounded-full -translate-x-1/2 -translate-y-1/2 animate-[drag-horizontal_2s_ease-in-out_infinite]" />
+            <div className="absolute top-[65%] left-1/2 -translate-x-1/2 w-12 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          </div>
+        </div>
+        
+        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white animate-pulse whitespace-nowrap">
+          {t}
+        </p>
+      </div>
+      
+      <style>{`
+        @keyframes pinch-out-1 {
+          0%, 100% { transform: translate(-24px, -12px) scale(1); opacity: 0.2; }
+          50% { transform: translate(-34px, -20px) scale(1.1); opacity: 1; }
+        }
+        @keyframes pinch-out-2 {
+          0%, 100% { transform: translate(10px, 12px) scale(1); opacity: 0.2; }
+          50% { transform: translate(20px, 20px) scale(1.1); opacity: 1; }
+        }
+        @keyframes drag-horizontal {
+          0%, 100% { transform: translate(-30px, -50%) scale(1); opacity: 0.2; }
+          50% { transform: translate(10px, -50%) scale(1.1); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+};
 
 const ShareSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const apps = [
@@ -88,7 +139,9 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   onUpgradeTrigger,
   onPrint,
   hasSeenHint,
-  onHintShown
+  onHintShown,
+  onLoadingChange,
+  language
 }) => {
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
@@ -104,6 +157,9 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const MODEL_URL = "https://modelviewer.dev/shared-assets/models/Astronaut.glb";
 
   useEffect(() => {
+    // Notify parent loading started
+    onLoadingChange?.(true);
+
     const viewer = modelViewerRef.current;
     let progressInterval: number;
     
@@ -126,6 +182,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       setProgress(100);
       setTimeout(() => {
         setLoading(false);
+        onLoadingChange?.(false); // Notify parent loading finished
         if (showHint) {
           setTimeout(() => {
             setShowHint(false);
@@ -235,9 +292,29 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
         {loading && (
           <div className="absolute inset-0 z-[150] flex flex-col items-center justify-center bg-black px-12 animate-in fade-in duration-300">
+             {/* Optimized Sci-Fi 3D Loading Animation */}
+             <div className="relative mb-14" style={{ perspective: '1000px' }}>
+                <div className="relative w-40 h-40 flex items-center justify-center animate-[rotate-y_4s_linear_infinite]" style={{ transformStyle: 'preserve-3d' }}>
+                  <div className="absolute top-[80%] left-1/2 -translate-x-1/2 w-32 h-32 bg-neutral-900/50 rounded-xl border border-[#D0F870]/20" style={{ 
+                    transform: 'rotateX(80deg) translateZ(-40px)',
+                    backgroundImage: 'linear-gradient(#D0F87020 1px, transparent 1px), linear-gradient(90deg, #D0F87020 1px, transparent 1px)',
+                    backgroundSize: '8px 8px'
+                  }} />
+                  <div className="relative w-32 h-32 flex items-center justify-center">
+                    <img 
+                      src={MESH_CREDIT_ICON} 
+                      className="w-full h-full object-contain filter brightness-[1.8] contrast-[1.5] drop-shadow-[0_0_25px_rgba(208,248,112,0.8)]" 
+                      alt="Meshy Mushroom" 
+                    />
+                    <div className="absolute inset-x-0 h-[2px] bg-[#D0F870] shadow-[0_0_15px_#D0F870] opacity-80 animate-[scan-y_2.5s_ease-in-out_infinite]" style={{ transform: 'translateZ(20px)' }} />
+                  </div>
+                </div>
+                <div className="absolute bottom-[-20%] left-1/2 -translate-x-1/2 w-48 h-10 bg-[#D0F870]/20 blur-[30px] rounded-full scale-y-50" />
+             </div>
+
              <div className="w-full space-y-4 max-w-[260px]">
                 <div className="flex justify-between items-end">
-                  <span className="text-[10px] text-[#D0F870] font-black uppercase tracking-[0.4em] animate-pulse">Syncing Neural Mesh</span>
+                  <span className="text-[10px] text-[#D0F870] font-black uppercase tracking-[0.4em] animate-pulse">Neural Reconstructing</span>
                   <span className="text-xl font-black text-white tabular-nums">{Math.floor(progress)}%</span>
                 </div>
                 <div className="h-1 w-full bg-neutral-900 rounded-full overflow-hidden border border-white/5 relative">
@@ -261,6 +338,9 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
           <div slot="progress-bar" className="hidden"></div>
         </model-viewer>
 
+        {/* Gesture Hint Overlay */}
+        {!loading && showHint && <GestureHint language={language} />}
+
         {!loading && (
           <div className={`absolute right-6 flex flex-col gap-3 z-[120] transition-all duration-300 ${isFullscreen ? 'top-12' : 'top-6'}`}>
             <button 
@@ -277,8 +357,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
         )}
       </div>
 
-      {!isFullscreen && (
-        <div className="bg-neutral-950 border-t border-white/10 px-6 pt-5 pb-12 grid grid-cols-4 gap-4 z-[110]">
+      {!isFullscreen && !loading && (
+        <div className="bg-neutral-950 border-t border-white/10 px-6 pt-5 pb-12 grid grid-cols-4 gap-4 z-[110] animate-in slide-in-from-bottom duration-500">
           {actionButtons.map((btn, i) => (
             <button key={i} onClick={() => handleAction(btn)} className="flex flex-col items-center gap-2 group relative">
               <div className={`w-full aspect-square flex items-center justify-center rounded-2xl border border-white/5 transition-all ${btn.primary ? 'bg-[#D0F870] text-black shadow-lg active:scale-95' : 'bg-neutral-900 text-neutral-400 active:scale-95'}`}>
@@ -378,6 +458,18 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       <style>{`
         @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-slide-up { animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        
+        @keyframes rotate-y {
+          from { transform: rotateY(0deg); }
+          to { transform: rotateY(360deg); }
+        }
+
+        @keyframes scan-y {
+          0% { top: 0%; opacity: 0; }
+          20% { opacity: 1; }
+          80% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
       `}</style>
     </div>
   );
