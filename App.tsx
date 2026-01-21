@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { NavTab, Model } from './types';
+import { NavTab, Model, UserTier, GenerationTask } from './types';
 import Layout from './components/Layout';
 import Explore from './components/Explore';
 import Create from './components/Create';
@@ -12,6 +12,7 @@ import ImageViewer from './components/ImageViewer';
 import PrintPage from './components/PrintPage';
 import LoginModal from './components/LoginModal';
 import SplashScreen from './components/SplashScreen';
+import MockOpenWith from './components/MockOpenWith';
 import { CheckCircle2 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -22,7 +23,7 @@ const App: React.FC = () => {
   const [isWorkspaceMode, setIsWorkspaceMode] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ url: string; title: string } | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [userTier, setUserTier] = useState<UserTier>('free');
   const [credits, setCredits] = useState(150);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -30,8 +31,15 @@ const App: React.FC = () => {
   const [showPrintPage, setShowPrintPage] = useState(false);
   const [previousTab, setPreviousTab] = useState<NavTab>(NavTab.EXPLORE);
   const [isViewerLoading, setIsViewerLoading] = useState(false);
+  const [shouldScrollToTasks, setShouldScrollToTasks] = useState(false);
+  const [openWithFile, setOpenWithFile] = useState<string | null>(null);
+
+  // Lifted Tasks State - Cleaned up to ensure only one task can be started in prototype
+  const [tasks, setTasks] = useState<GenerationTask[]>([
+    { id: 't-completed-model', type: 'Model', status: 'completed', progress: 100, thumbnail: 'https://picsum.photos/seed/panda1/200/200', title: 'Ancient Panda', createdAt: 'Mar 24, 10:45 AM' },
+    { id: 't-completed-image', type: 'Image', status: 'completed', progress: 100, thumbnail: 'https://picsum.photos/seed/fantasy_i-done/200/200', title: 'Mythic Citadel', createdAt: 'Mar 24, 09:30 AM' },
+  ]);
   
-  // Persistent hint state
   const [hasSeenViewerHint, setHasSeenViewerHint] = useState<boolean>(() => {
     return localStorage.getItem('meshy_has_seen_viewer_hint') === 'true';
   });
@@ -51,12 +59,9 @@ const App: React.FC = () => {
   };
 
   const handleRemix = (model: Model) => {
-    if (!isLoggedIn) {
-      setShowLoginModal(true);
-      return;
-    }
+    // Guest allowed to remix (navigate to create with reference)
     setSelectedModel(null);
-    setCreateInitialMode('genImage');
+    setCreateInitialMode('image3d');
     setReferenceImage(model.thumbnail);
     setActiveTab(NavTab.CREATE);
   };
@@ -80,7 +85,6 @@ const App: React.FC = () => {
   };
 
   const handleUpgradeTrigger = () => {
-    // Save current state and switch to subscription mode
     setPreviousTab(activeTab);
     setActiveTab(NavTab.SUBSCRIBE);
     setTempSubscribeClose(true);
@@ -93,14 +97,13 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    setIsSubscribed(false);
+    setUserTier('free');
     setCredits(150);
     setActiveTab(NavTab.EXPLORE);
   };
 
   const handleConfirmSuccess = () => {
     setShowSuccessModal(false);
-    // Return to the previous tab/page after subscription
     if (tempSubscribeClose) {
       setActiveTab(previousTab);
       setTempSubscribeClose(false);
@@ -112,8 +115,28 @@ const App: React.FC = () => {
     localStorage.setItem('meshy_has_seen_viewer_hint', 'true');
   };
 
+  const handleRetryModel = (model: Model) => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    const newTask: GenerationTask = {
+      id: Date.now().toString(),
+      type: 'Model',
+      status: 'processing',
+      progress: 0,
+      thumbnail: model.thumbnail,
+      title: `${model.title} (Retry)`,
+      createdAt: `${dateStr}, ${timeStr}`
+    };
+    
+    setTasks(prev => [newTask, ...prev]);
+    setSelectedModel(null);
+    setActiveTab(NavTab.CREATE);
+    setShouldScrollToTasks(true);
+  };
+
   const renderContent = () => {
-    // If it's a triggered subscription, we render it as a top-level overlay instead of inside the Layout
     if (activeTab === NavTab.SUBSCRIBE && tempSubscribeClose) {
       return null;
     }
@@ -124,8 +147,10 @@ const App: React.FC = () => {
       case NavTab.ASSETS:
         return (
           <Assets 
+            isLoggedIn={isLoggedIn}
+            onLoginTrigger={handleLoginTrigger}
             onModelClick={(m) => handleOpenModel(m, true)} 
-            isSubscribed={isSubscribed}
+            userTier={userTier}
             onGenerate3D={handleGenerate3D}
             onEditImage={handleEditImage}
             onImageClick={(url, title) => setSelectedImage({ url, title })}
@@ -134,6 +159,7 @@ const App: React.FC = () => {
               setReferenceImage(null);
               handleTabChange(NavTab.CREATE);
             }}
+            onOpenFile={setOpenWithFile}
             language={language}
           />
         );
@@ -141,6 +167,7 @@ const App: React.FC = () => {
         return (
           <Create 
             isLoggedIn={isLoggedIn}
+            userTier={userTier}
             credits={credits} 
             setCredits={setCredits} 
             onLoginTrigger={handleLoginTrigger}
@@ -150,16 +177,20 @@ const App: React.FC = () => {
             initialMode={createInitialMode} 
             initialRefImage={referenceImage}
             language={language}
+            tasks={tasks}
+            setTasks={setTasks}
+            shouldScrollToTasks={shouldScrollToTasks}
+            onScrollComplete={() => setShouldScrollToTasks(false)}
           />
         );
       case NavTab.SUBSCRIBE:
         return (
           <Subscription 
             isLoggedIn={isLoggedIn}
-            isSubscribed={isSubscribed} 
-            onSubscribeSuccess={() => {
-              setIsSubscribed(true);
-              setCredits(prev => prev + 1000);
+            userTier={userTier} 
+            onSubscribeSuccess={(tier) => {
+              setUserTier(tier);
+              setCredits(prev => prev + (tier === 'pro' ? 1000 : 4000));
               setShowSuccessModal(true);
             }} 
             credits={credits}
@@ -173,7 +204,7 @@ const App: React.FC = () => {
         return (
           <Me 
             isLoggedIn={isLoggedIn} 
-            isSubscribed={isSubscribed} 
+            userTier={userTier} 
             credits={credits} 
             onLoginClick={handleLoginTrigger}
             onLogout={handleLogout}
@@ -190,12 +221,12 @@ const App: React.FC = () => {
   const t = {
     en: {
       successTitle: 'Transmission Sync',
-      successText: 'Payment completed. +1000 credits has been added and unlock features.',
+      successText: 'Operation successful. Credits added or subscription updated.',
       confirm: 'Confirm Protocol'
     },
     zh: {
       successTitle: '传输同步完成',
-      successText: '支付成功。+1000 积分已到账，所有高级功能已解锁。',
+      successText: '操作成功。积分已入账或订阅已更新。',
       confirm: '确认协议'
     }
   }[language];
@@ -228,7 +259,7 @@ const App: React.FC = () => {
           <ModelViewer 
             model={selectedModel} 
             isLoggedIn={isLoggedIn}
-            isSubscribed={isSubscribed}
+            userTier={userTier}
             isWorkspaceMode={isWorkspaceMode}
             onClose={() => {
               setSelectedModel(null);
@@ -244,19 +275,20 @@ const App: React.FC = () => {
             hasSeenHint={hasSeenViewerHint}
             onHintShown={handleHintShown}
             onLoadingChange={setIsViewerLoading}
+            onOpenFile={setOpenWithFile}
             language={language}
+            onRetryTask={handleRetryModel}
           />
         )}
 
-        {/* Triggered Subscription Modal Overlay (Ensures it appears ABOVE the model viewer) */}
         {activeTab === NavTab.SUBSCRIBE && tempSubscribeClose && (
           <div className="absolute inset-0 z-[350] bg-black animate-in slide-in-from-bottom duration-500">
             <Subscription 
               isLoggedIn={isLoggedIn}
-              isSubscribed={isSubscribed} 
-              onSubscribeSuccess={() => {
-                setIsSubscribed(true);
-                setCredits(prev => prev + 1000);
+              userTier={userTier} 
+              onSubscribeSuccess={(tier) => {
+                setUserTier(tier);
+                setCredits(prev => prev + (tier === 'pro' ? 1000 : 4000));
                 setShowSuccessModal(true);
               }} 
               credits={credits}
@@ -282,13 +314,28 @@ const App: React.FC = () => {
           />
         )}
 
-        {showPrintPage && <PrintPage onClose={() => setShowPrintPage(false)} language={language} />}
+        {showPrintPage && (
+          <PrintPage 
+            onClose={() => setShowPrintPage(false)} 
+            onOpenFile={(file) => {
+              setOpenWithFile(file);
+            }}
+            language={language} 
+          />
+        )}
         
         {showLoginModal && (
           <LoginModal 
             onClose={() => setShowLoginModal(false)} 
             onLoginSuccess={handleLoginSuccess} 
             language={language}
+          />
+        )}
+
+        {openWithFile && (
+          <MockOpenWith 
+            fileName={openWithFile} 
+            onClose={() => setOpenWithFile(null)} 
           />
         )}
 

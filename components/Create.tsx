@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Type, Image as ImageIcon, Sparkles, Zap, Camera, ListChecks, CheckCircle2, X, Plus, Upload, Clock } from 'lucide-react';
-import { GenerationTask, Model } from '../types';
+import { Type, Image as ImageIcon, Sparkles, Zap, Camera, ListChecks, CheckCircle2, X, Plus, Upload, Clock, AlertCircle } from 'lucide-react';
+import { GenerationTask, Model, UserTier } from '../types';
 import { MOCK_MODELS, MESH_CREDIT_ICON } from '../constants';
 
 interface CreateProps {
   isLoggedIn: boolean;
+  userTier: UserTier;
   credits: number;
   setCredits: (c: number) => void;
   onLoginTrigger: () => void;
@@ -15,10 +16,15 @@ interface CreateProps {
   initialMode?: 'image3d' | 'genImage';
   initialRefImage?: string | null;
   language: 'en' | 'zh';
+  tasks: GenerationTask[];
+  setTasks: React.Dispatch<React.SetStateAction<GenerationTask[]>>;
+  shouldScrollToTasks?: boolean;
+  onScrollComplete?: () => void;
 }
 
 const Create: React.FC<CreateProps> = ({ 
   isLoggedIn, 
+  userTier,
   credits, 
   setCredits, 
   onLoginTrigger, 
@@ -27,33 +33,57 @@ const Create: React.FC<CreateProps> = ({
   onUpgradeTrigger,
   initialMode = 'image3d', 
   initialRefImage,
-  language
+  language,
+  tasks,
+  setTasks,
+  shouldScrollToTasks,
+  onScrollComplete
 }) => {
   const [tab, setTab] = useState<'image3d' | 'genImage'>(initialMode as any);
   const [prompt, setPrompt] = useState('');
   const [isPromptError, setIsPromptError] = useState(false);
   const [refImage, setRefImage] = useState<string | null>(initialRefImage || null);
+  const [showQueueWarning, setShowQueueWarning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tasksSectionRef = useRef<HTMLElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
-  const [tasks, setTasks] = useState<GenerationTask[]>([
-    { id: 't-completed-model', type: 'Model', status: 'completed', progress: 100, thumbnail: 'https://picsum.photos/seed/panda1/200/200', title: 'Ancient Panda', createdAt: 'Mar 24, 10:45 AM' },
-    { id: 't-completed-image', type: 'Image', status: 'completed', progress: 100, thumbnail: 'https://picsum.photos/seed/fantasy_i-done/200/200', title: 'Mythic Citadel', createdAt: 'Mar 24, 09:30 AM' },
-    { id: 't-processing', type: 'Model', status: 'processing', progress: 65, thumbnail: 'https://picsum.photos/seed/panda2/200/200', title: 'Panda Alpha', createdAt: 'Mar 24, 11:05 AM' },
-  ]);
-
   useEffect(() => {
     if (initialMode) setTab(initialMode as any);
     if (initialRefImage) setRefImage(initialRefImage);
   }, [initialMode, initialRefImage]);
 
-  const handleCapture = async () => {
-    if (!isLoggedIn) {
-      onLoginTrigger();
-      return;
+  useEffect(() => {
+    if (shouldScrollToTasks) {
+       setTimeout(() => {
+         tasksSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+         onScrollComplete?.();
+       }, 500);
     }
-    
+  }, [shouldScrollToTasks]);
+
+  useEffect(() => {
+    const processingTasks = tasks.filter(t => t.status === 'processing');
+    if (processingTasks.length === 0) return;
+
+    const interval = setInterval(() => {
+      setTasks(prevTasks => prevTasks.map(task => {
+        if (task.status === 'processing') {
+          const newProgress = Math.min(task.progress + (100 / 15) * 0.5, 100); 
+          if (newProgress >= 100) {
+            return { ...task, status: 'completed', progress: 100 };
+          }
+          return { ...task, progress: newProgress };
+        }
+        return task;
+      }));
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [tasks, setTasks]);
+
+  const handleCapture = async () => {
+    // Guest access allowed for Capture
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       stream.getTracks().forEach(track => track.stop());
@@ -65,10 +95,7 @@ const Create: React.FC<CreateProps> = ({
   };
 
   const handleUploadClick = () => {
-    if (!isLoggedIn) {
-      onLoginTrigger();
-      return;
-    }
+    // Guest access allowed for Upload
     fileInputRef.current?.click();
   };
 
@@ -86,6 +113,12 @@ const Create: React.FC<CreateProps> = ({
   const handleGenerate = () => {
     if (!isLoggedIn) {
       onLoginTrigger();
+      return;
+    }
+
+    const currentProcessingCount = tasks.filter(t => t.status === 'processing').length;
+    if (userTier === 'free' && currentProcessingCount >= 1) {
+      setShowQueueWarning(true);
       return;
     }
 
@@ -114,7 +147,7 @@ const Create: React.FC<CreateProps> = ({
       status: 'processing',
       progress: 0,
       thumbnail: refImage || (tab === 'image3d' ? 'https://picsum.photos/seed/panda_new/200/200' : 'https://picsum.photos/seed/new_fantasy/200/200'),
-      title: tab === 'image3d' ? 'New Panda Model' : prompt.slice(0, 15) || 'Neural Visual',
+      title: tab === 'image3d' ? 'New Neural Mesh' : prompt.slice(0, 15) || 'Neural Visual',
       createdAt: fullTimeStr
     };
     
@@ -139,18 +172,34 @@ const Create: React.FC<CreateProps> = ({
   const isImg3D = tab === 'image3d';
   const themeTextColor = isImg3D ? 'text-[#D0F870]' : 'text-[#C084FC]';
 
+  const t = {
+    en: {
+      queueLimit: 'Free user only allow 1 task in queue, subscribe and unlock.',
+      dismiss: 'Dismiss',
+      upgrade: 'Upgrade Now',
+      generateModel: 'Generate Model',
+      generateImage: 'Generate Image'
+    },
+    zh: {
+      queueLimit: '免费用户同时只能进行1个任务，请订阅解锁。',
+      dismiss: '知道了',
+      upgrade: '立即升级',
+      generateModel: '制作模型',
+      generateImage: '制作图片'
+    }
+  }[language];
+
   return (
     <div className="flex flex-col h-full bg-meshy-dark">
       <header className="sticky top-0 bg-black/95 backdrop-blur-xl z-30 px-6 pt-4 pb-4 border-b border-white/5">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-xl font-black uppercase tracking-tighter text-white">Gen Engine</h1>
-          <button 
-            onClick={onUpgradeTrigger}
-            className="bg-[#D0F870]/10 border border-[#D0F870]/20 px-3 py-1.5 rounded-full flex items-center gap-2 active:bg-[#D0F870]/20 transition-colors"
+          <div 
+            className="bg-[#D0F870]/10 border border-[#D0F870]/20 px-3 py-1.5 rounded-full flex items-center gap-2"
           >
              <img src={MESH_CREDIT_ICON} className="w-3 h-3 object-contain" alt="Credits" />
              <span className="text-[10px] font-black text-[#D0F870]">{credits}</span>
-          </button>
+          </div>
         </div>
         
         <div className="flex p-1 bg-neutral-900 border border-white/5 rounded-2xl">
@@ -220,21 +269,21 @@ const Create: React.FC<CreateProps> = ({
               
               <div className="flex flex-col items-center">
                 <div className="flex items-center justify-center gap-4 text-neutral-400 text-[10px] font-bold uppercase tracking-widest mb-2 w-full">
-                   <span>1 min</span>
+                   <span>15 sec</span>
                    <div className="w-[1px] h-3 bg-neutral-800" />
                    <div className="flex items-center gap-1.5">
                       <img src={MESH_CREDIT_ICON} className="w-4 h-4 object-contain shadow-[0_0_8px_rgba(251,146,60,0.4)]" alt="M" />
                       <span className="text-[#D0F870]">25</span>
                    </div>
                 </div>
-                <button onClick={handleGenerate} className="w-full bg-[#D0F870] py-5 rounded-[28px] font-black text-sm uppercase tracking-[0.25em] text-black shadow-[0_15px_30px_rgba(208,248,112,0.2)] active:scale-95 transition-all flex items-center justify-center gap-3">
-                  <Sparkles size={20} className="text-black" /> Generate 3D Model
-                </button>
+                
+                {/* Updated Button: 'Generate Model' and removed PRO badge */}
                 <button 
-                  onClick={() => setTab('genImage')}
-                  className="mt-6 text-[9px] font-bold text-neutral-500 uppercase tracking-[0.15em] hover:text-[#C084FC] transition-colors"
+                  onClick={handleGenerate} 
+                  className="w-full h-16 rounded-[32px] bg-gradient-to-r from-[#D0F870] via-[#FBBAC1] to-[#F9A8D4] border-[6px] border-[#1a1a1a] shadow-[0_15px_30px_rgba(0,0,0,0.4)] active:scale-[0.97] transition-all flex items-center justify-center gap-3"
                 >
-                  no image? <span className="underline decoration-[#C084FC]/40 underline-offset-4">click here to generate image first.</span>
+                  <Sparkles size={22} className="text-black" />
+                  <span className="font-black text-xl text-black tracking-tight">{t.generateModel}</span>
                 </button>
               </div>
             </div>
@@ -267,11 +316,8 @@ const Create: React.FC<CreateProps> = ({
                     </div>
                   </div>
                   <button onClick={handleGenerate} className="w-full bg-[#C084FC] py-5 rounded-[28px] font-black text-sm uppercase tracking-[0.25em] text-black active:scale-95 transition-all shadow-[0_20px_40px_rgba(192,132,252,0.15)] flex items-center justify-center gap-3">
-                    <Sparkles size={18} className="text-black" /> Generate Image
+                    <Sparkles size={18} className="text-black" /> {t.generateImage}
                   </button>
-                  <p className="mt-3 text-[9px] font-bold text-neutral-500 uppercase tracking-widest">
-                    AI Model: Nano Banana Pro
-                  </p>
                </div>
             </div>
           )}
@@ -296,8 +342,11 @@ const Create: React.FC<CreateProps> = ({
                     <div className="aspect-square rounded-[24px] overflow-hidden bg-black relative shadow-xl">
                       <img src={task.thumbnail} className={`w-full h-full object-cover transition-all duration-700 ${task.status === 'processing' ? 'opacity-20 blur-sm' : 'opacity-100 group-hover:scale-110'}`} />
                       {task.status === 'processing' && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className={`w-8 h-8 border-2 ${task.type === 'Model' ? 'border-[#D0F870]/10 border-t-[#D0F870]' : 'border-[#C084FC]/10 border-t-[#C084FC]'} rounded-full animate-spin`} />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+                           <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mb-2">
+                              <div className={`h-full ${task.type === 'Model' ? 'bg-[#D0F870]' : 'bg-[#C084FC]'} transition-all duration-500`} style={{ width: `${task.progress}%` }} />
+                           </div>
+                           <span className="text-[10px] font-black text-white tabular-nums">{Math.floor(task.progress)}%</span>
                         </div>
                       )}
                     </div>
@@ -306,30 +355,56 @@ const Create: React.FC<CreateProps> = ({
                          <span className={`text-[6px] font-black uppercase tracking-widest ${task.type === 'Model' ? 'text-[#D0F870]' : 'text-[#C084FC]'}`}>{task.type}</span>
                          <span className="text-[8px] font-black text-white/90 truncate max-w-[65px] uppercase tracking-tighter">{task.title}</span>
                       </div>
-                      {task.status === 'processing' ? (
-                         <div className="h-1 w-full bg-neutral-800/50 rounded-full overflow-hidden">
-                            <div className={`h-full animate-pulse ${task.type === 'Model' ? 'bg-[#D0F870]' : 'bg-[#C084FC]'}`} style={{width: `${task.progress}%`}} />
-                         </div>
-                      ) : (
-                         <div className="flex items-center justify-end text-[7px] font-black uppercase">
-                            {task.createdAt && (
-                              <div className="text-neutral-600 flex items-center gap-1">
-                                 <Clock size={8} /> {task.createdAt}
-                              </div>
-                            )}
-                         </div>
-                      )}
+                      <div className="flex items-center justify-between text-[7px] font-black uppercase">
+                        {task.status === 'processing' ? (
+                          <span className="text-neutral-500 animate-pulse">Syncing...</span>
+                        ) : (
+                          <div className="text-neutral-600 flex items-center gap-1">
+                             <Clock size={8} /> {task.createdAt}
+                          </div>
+                        )}
+                        {task.status === 'completed' && <CheckCircle2 size={8} className="text-[#D0F870]" />}
+                      </div>
                     </div>
                  </div>
                ))}
             </div>
-            
-            <p className="text-[8px] font-bold text-neutral-600 uppercase tracking-widest text-center px-4 leading-relaxed mt-2">
-              Recent task only shows tasks from the past week, please visit the asset page for more history.
-            </p>
           </section>
         )}
       </div>
+
+      {showQueueWarning && (
+        <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-8 animate-in fade-in duration-300">
+           <div className="bg-neutral-900 border border-white/5 p-8 rounded-[40px] flex flex-col items-center gap-6 text-center shadow-2xl animate-in zoom-in-95 duration-300 w-full max-w-[320px]">
+              <div className="w-16 h-16 bg-rose-500/10 rounded-[24px] flex items-center justify-center text-rose-500">
+                 <AlertCircle size={32} />
+              </div>
+              <div className="space-y-2 px-2">
+                 <h3 className="text-lg font-black text-white uppercase tracking-tighter">Queue Full</h3>
+                 <p className="text-neutral-400 text-[10px] font-bold uppercase tracking-widest leading-relaxed">
+                   {t.queueLimit}
+                 </p>
+              </div>
+              <div className="flex flex-col w-full gap-3 mt-2">
+                <button 
+                  onClick={() => {
+                    setShowQueueWarning(false);
+                    onUpgradeTrigger();
+                  }}
+                  className="w-full bg-[#D0F870] py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-black shadow-lg shadow-[#D0F870]/20 active:scale-95 transition-all"
+                >
+                  {t.upgrade}
+                </button>
+                <button 
+                  onClick={() => setShowQueueWarning(false)}
+                  className="w-full bg-neutral-800 border border-white/5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-neutral-400 active:scale-95 transition-all"
+                >
+                  {t.dismiss}
+                </button>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };

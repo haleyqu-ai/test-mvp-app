@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Model, RenderMode } from '../types';
+import { Model, RenderMode, UserTier } from '../types';
 import { 
   ArrowLeft, Share2, Download, Printer, Wand2, Maximize, X, 
   Box, RefreshCw, Lock, ChevronDown, RotateCcw, Sparkles, Info, Cpu, Layers, Activity, Zap, Move, Terminal, Image as ImageIcon,
@@ -11,7 +11,7 @@ import { MESH_CREDIT_ICON } from '../constants';
 interface ModelViewerProps {
   model: Model;
   isLoggedIn: boolean;
-  isSubscribed: boolean;
+  userTier: UserTier;
   isWorkspaceMode: boolean;
   onClose: () => void;
   onRemix: (model: Model) => void;
@@ -21,6 +21,8 @@ interface ModelViewerProps {
   hasSeenHint?: boolean;
   onHintShown?: () => void;
   onLoadingChange?: (loading: boolean) => void;
+  onRetryTask?: (model: Model) => void;
+  onOpenFile?: (name: string) => void;
   language: 'en' | 'zh';
 }
 
@@ -36,26 +38,20 @@ const GestureHint: React.FC<{ language: 'en' | 'zh' }> = ({ language }) => {
     <div className="absolute inset-0 z-[140] pointer-events-none flex flex-col items-center justify-center animate-in fade-in duration-500">
       <div className="bg-black/40 backdrop-blur-2xl border border-white/10 rounded-[40px] px-8 py-8 flex flex-col items-center gap-6 shadow-2xl">
         <div className="flex items-center gap-10">
-          {/* Zoom Visual */}
           <div className="relative w-14 h-14">
             <div className="absolute top-1/2 left-1/2 w-4 h-4 border-2 border-[#D0F870] rounded-full -translate-x-6 -translate-y-2 animate-[pinch-out-1_2s_ease-in-out_infinite]" />
             <div className="absolute top-1/2 left-1/2 w-4 h-4 border-2 border-[#D0F870] rounded-full translate-x-2 translate-y-2 animate-[pinch-out-2_2s_ease-in-out_infinite]" />
           </div>
-          
           <div className="w-[1px] h-8 bg-white/10" />
-
-          {/* Rotate Visual */}
           <div className="relative w-14 h-14">
             <div className="absolute top-1/2 left-1/2 w-5 h-5 border-2 border-white rounded-full -translate-x-1/2 -translate-y-1/2 animate-[drag-horizontal_2s_ease-in-out_infinite]" />
             <div className="absolute top-[65%] left-1/2 -translate-x-1/2 w-12 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           </div>
         </div>
-        
         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white animate-pulse whitespace-nowrap">
           {t}
         </p>
       </div>
-      
       <style>{`
         @keyframes pinch-out-1 {
           0%, 100% { transform: translate(-24px, -12px) scale(1); opacity: 0.2; }
@@ -82,20 +78,16 @@ const ShareSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     { icon: Send, label: 'Slack', color: 'bg-purple-500' },
     { icon: MoreHorizontal, label: 'More', color: 'bg-neutral-600' },
   ];
-
   const actions = [
     { icon: Copy, label: 'Copy Link' },
     { icon: Download, label: 'Save to Files' },
     { icon: Printer, label: 'Print' },
     { icon: MoreHorizontal, label: 'Edit Actions...' },
   ];
-
   return (
     <div className="absolute inset-0 z-[300] bg-black/40 backdrop-blur-sm flex items-end animate-in fade-in duration-300" onClick={onClose}>
       <div className="w-full bg-[#1c1c1e] rounded-t-[32px] p-4 pb-12 animate-slide-up flex flex-col gap-6" onClick={e => e.stopPropagation()}>
         <div className="w-10 h-1 bg-neutral-700 rounded-full mx-auto" />
-        
-        {/* Apps Row */}
         <div className="flex overflow-x-auto hide-scrollbar gap-5 px-2">
           {apps.map((app, i) => (
             <div key={i} className="flex flex-col items-center gap-2 shrink-0">
@@ -106,8 +98,6 @@ const ShareSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             </div>
           ))}
         </div>
-
-        {/* Actions List */}
         <div className="bg-[#2c2c2e] rounded-2xl overflow-hidden">
           {actions.map((action, i) => (
             <button key={i} className={`w-full flex items-center justify-between px-5 py-4 active:bg-neutral-700 transition-colors ${i !== 0 ? 'border-t border-white/5' : ''}`}>
@@ -116,7 +106,6 @@ const ShareSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             </button>
           ))}
         </div>
-
         <button 
           onClick={onClose}
           className="w-full bg-[#2c2c2e] py-4 rounded-2xl text-white font-semibold text-base active:bg-neutral-700 transition-colors"
@@ -131,7 +120,7 @@ const ShareSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 const ModelViewer: React.FC<ModelViewerProps> = ({ 
   model, 
   isLoggedIn, 
-  isSubscribed, 
+  userTier, 
   isWorkspaceMode,
   onClose, 
   onRemix, 
@@ -141,6 +130,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   hasSeenHint,
   onHintShown,
   onLoadingChange,
+  onRetryTask,
+  onOpenFile,
   language
 }) => {
   const [loading, setLoading] = useState(true);
@@ -152,17 +143,17 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const [showHint, setShowHint] = useState(!hasSeenHint);
   const [isExporting, setIsExporting] = useState<string | null>(null);
   const [exportedFormats, setExportedFormats] = useState<Set<string>>(new Set());
-  const modelViewerRef = useRef<any>(null);
+  
+  const maxRetries = userTier === 'studio' ? 8 : userTier === 'pro' ? 4 : 0;
+  const [retriesLeft, setRetriesLeft] = useState(maxRetries);
 
+  const modelViewerRef = useRef<any>(null);
   const MODEL_URL = "https://modelviewer.dev/shared-assets/models/Astronaut.glb";
 
   useEffect(() => {
-    // Notify parent loading started
     onLoadingChange?.(true);
-
     const viewer = modelViewerRef.current;
     let progressInterval: number;
-    
     const startProgress = () => {
       progressInterval = window.setInterval(() => {
         setProgress(prev => {
@@ -175,14 +166,12 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
         });
       }, 80);
     };
-
     startProgress();
-
     const handleLoad = () => {
       setProgress(100);
       setTimeout(() => {
         setLoading(false);
-        onLoadingChange?.(false); // Notify parent loading finished
+        onLoadingChange?.(false);
         if (showHint) {
           setTimeout(() => {
             setShowHint(false);
@@ -192,12 +181,10 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       }, 500); 
       clearInterval(progressInterval);
     };
-
     if (viewer) {
       viewer.addEventListener('load', handleLoad);
       if (viewer.loaded) handleLoad();
     }
-
     return () => {
       if (viewer) viewer.removeEventListener('load', handleLoad);
       clearInterval(progressInterval);
@@ -213,14 +200,29 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     }
   };
 
+  const handleRetry = () => {
+    if (!isLoggedIn) { onLoginTrigger(); return; }
+    if (userTier === 'free') { onUpgradeTrigger(); return; }
+    if (retriesLeft <= 0) return;
+    
+    setRetriesLeft(prev => prev - 1);
+    
+    if (onRetryTask) {
+        onRetryTask(model);
+    }
+  };
+
   const handleExportClick = () => {
     if (!isLoggedIn) { onLoginTrigger(); return; }
-    if (!isSubscribed) { onUpgradeTrigger(); return; }
+    if (userTier === 'free') { onUpgradeTrigger(); return; }
     setShowExport(true);
   };
 
   const handleFormatSelect = (fmt: string) => {
-    if (exportedFormats.has(fmt)) return;
+    if (exportedFormats.has(fmt)) {
+      onOpenFile?.(`${model.title.toLowerCase().replace(/\s+/g, '_')}.${fmt.toLowerCase()}`);
+      return;
+    }
     setIsExporting(fmt);
     setTimeout(() => {
       setExportedFormats(prev => new Set([...prev, fmt]));
@@ -233,22 +235,20 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       onLoginTrigger();
       return;
     }
-    if (btn.proOnly && (!isLoggedIn || !isSubscribed)) {
-      if (!isLoggedIn) onLoginTrigger();
-      else onUpgradeTrigger();
-      return;
-    }
     btn.action();
   };
 
   const actionButtons = [
     { 
       icon: isWorkspaceMode ? RotateCcw : Wand2, 
-      label: isWorkspaceMode ? 'Retry' : 'Remix', 
+      label: isWorkspaceMode 
+        ? (userTier === 'free' ? 'Free Retry' : `Free Retry (${retriesLeft}/${maxRetries})`) 
+        : 'Remix', 
       primary: true, 
-      proOnly: isWorkspaceMode,
-      restricted: true,
-      action: isWorkspaceMode ? () => {} : () => onRemix(model) 
+      // Changed restricted: true to only be true when in Workspace Mode (Retry action)
+      restricted: isWorkspaceMode,
+      action: isWorkspaceMode ? handleRetry : () => onRemix(model),
+      disabled: isWorkspaceMode && userTier !== 'free' && retriesLeft <= 0
     },
     { 
       icon: Download, 
@@ -272,7 +272,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
 
   return (
     <div className={`absolute inset-0 z-[100] bg-black flex flex-col overflow-hidden transition-all duration-400 ${isFullscreen ? 'fixed' : 'animate-in slide-in-from-right'}`}>
-      
       {!isFullscreen && (
         <div className="h-20 bg-black/80 backdrop-blur-3xl border-b border-white/5 flex items-center justify-between px-6 pt-6 z-[110]">
            <button onClick={onClose} className="p-2.5 bg-neutral-900 border border-white/10 rounded-full text-white active:scale-90 transition-all flex items-center justify-center">
@@ -292,26 +291,21 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
         {loading && (
           <div className="absolute inset-0 z-[150] flex flex-col items-center justify-center bg-black px-12 animate-in fade-in duration-300">
-             {/* Optimized Sci-Fi 3D Loading Animation */}
              <div className="relative mb-14" style={{ perspective: '1000px' }}>
-                <div className="relative w-40 h-40 flex items-center justify-center animate-[rotate-y_4s_linear_infinite]" style={{ transformStyle: 'preserve-3d' }}>
+                {/* Updated Loader with Colorful Logo and Horizontal Rotation */}
+                <div className="relative w-40 h-40 flex items-center justify-center animate-[rotate-y-smooth_4s_linear_infinite]" style={{ transformStyle: 'preserve-3d' }}>
                   <div className="absolute top-[80%] left-1/2 -translate-x-1/2 w-32 h-32 bg-neutral-900/50 rounded-xl border border-[#D0F870]/20" style={{ 
                     transform: 'rotateX(80deg) translateZ(-40px)',
                     backgroundImage: 'linear-gradient(#D0F87020 1px, transparent 1px), linear-gradient(90deg, #D0F87020 1px, transparent 1px)',
                     backgroundSize: '8px 8px'
                   }} />
                   <div className="relative w-32 h-32 flex items-center justify-center">
-                    <img 
-                      src={MESH_CREDIT_ICON} 
-                      className="w-full h-full object-contain filter brightness-[1.8] contrast-[1.5] drop-shadow-[0_0_25px_rgba(208,248,112,0.8)]" 
-                      alt="Meshy Mushroom" 
-                    />
+                    <img src={MESH_CREDIT_ICON} className="w-full h-full object-contain filter brightness-[1.1] contrast-[1.1] drop-shadow-[0_0_20px_rgba(208,248,112,0.6)]" alt="" />
                     <div className="absolute inset-x-0 h-[2px] bg-[#D0F870] shadow-[0_0_15px_#D0F870] opacity-80 animate-[scan-y_2.5s_ease-in-out_infinite]" style={{ transform: 'translateZ(20px)' }} />
                   </div>
                 </div>
                 <div className="absolute bottom-[-20%] left-1/2 -translate-x-1/2 w-48 h-10 bg-[#D0F870]/20 blur-[30px] rounded-full scale-y-50" />
              </div>
-
              <div className="w-full space-y-4 max-w-[260px]">
                 <div className="flex justify-between items-end">
                   <span className="text-[10px] text-[#D0F870] font-black uppercase tracking-[0.4em] animate-pulse">Neural Reconstructing</span>
@@ -338,16 +332,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
           <div slot="progress-bar" className="hidden"></div>
         </model-viewer>
 
-        {/* Gesture Hint Overlay */}
         {!loading && showHint && <GestureHint language={language} />}
 
         {!loading && (
           <div className={`absolute right-6 flex flex-col gap-3 z-[120] transition-all duration-300 ${isFullscreen ? 'top-12' : 'top-6'}`}>
-            <button 
-              onClick={handleResetView} 
-              title="Reset View"
-              className="p-3 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-xl text-[#D0F870] active:scale-90 flex items-center justify-center"
-            >
+            <button onClick={handleResetView} className="p-3 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-xl text-[#D0F870] active:scale-90 flex items-center justify-center">
               <RotateCcw size={18} />
             </button>
             <button onClick={() => setIsFullscreen(!isFullscreen)} className="p-3 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-xl text-white active:scale-90">
@@ -360,12 +349,19 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       {!isFullscreen && !loading && (
         <div className="bg-neutral-950 border-t border-white/10 px-6 pt-5 pb-12 grid grid-cols-4 gap-4 z-[110] animate-in slide-in-from-bottom duration-500">
           {actionButtons.map((btn, i) => (
-            <button key={i} onClick={() => handleAction(btn)} className="flex flex-col items-center gap-2 group relative">
+            <button 
+              key={i} 
+              onClick={() => handleAction(btn)} 
+              disabled={btn.disabled}
+              className={`flex flex-col items-center gap-2 group relative transition-all ${btn.disabled ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
+            >
               <div className={`w-full aspect-square flex items-center justify-center rounded-2xl border border-white/5 transition-all ${btn.primary ? 'bg-[#D0F870] text-black shadow-lg active:scale-95' : 'bg-neutral-900 text-neutral-400 active:scale-95'}`}>
                 <btn.icon size={22} />
               </div>
-              <span className={`text-[8px] font-black uppercase tracking-widest ${btn.primary ? 'text-[#D0F870]' : 'text-neutral-500'} truncate`}>{btn.label}</span>
-              {btn.proOnly && !isSubscribed && (
+              <span className={`text-[7px] font-black uppercase tracking-tight ${btn.primary ? 'text-[#D0F870]' : 'text-neutral-500'} text-center leading-[1.2] px-1`}>
+                {btn.label}
+              </span>
+              {(btn.proOnly || (isWorkspaceMode && btn.primary)) && userTier === 'free' && (
                 <div className="absolute top-1 right-1">
                   <Lock size={10} className={btn.primary ? 'text-black/60' : 'text-[#D0F870]/60'} />
                 </div>
@@ -383,19 +379,18 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Asset Intelligence</h3>
                <button onClick={() => setShowInfo(false)} className="p-2 bg-neutral-900 rounded-full text-neutral-500"><X size={16}/></button>
             </div>
-
             <div className="flex-1 overflow-y-auto space-y-8 hide-scrollbar">
               <div className="space-y-4">
                  <div className="flex items-center gap-2 px-1">
                     <Sparkles size={14} className="text-[#D0F870]" />
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Generation DNA</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">DNA</h4>
                  </div>
                  <div className="space-y-4">
                     <div className="bg-neutral-900/40 rounded-3xl border border-white/5 p-5 flex items-center gap-5">
                        <img src={model.thumbnail} className="w-20 h-20 rounded-2xl object-cover border border-white/10" alt="Ref" />
                        <div className="flex flex-col gap-1">
-                          <p className="text-[9px] font-black uppercase text-neutral-500 tracking-widest">Reference Image</p>
-                          <p className="text-[10px] font-bold text-white uppercase leading-tight">Neural Input Source</p>
+                          <p className="text-[9px] font-black uppercase text-neutral-500 tracking-widest">Reference</p>
+                          <p className="text-[10px] font-bold text-white uppercase tracking-tight">Neural Source</p>
                        </div>
                     </div>
                     <div className="bg-neutral-900/40 rounded-3xl border border-white/5 p-5 space-y-2">
@@ -403,13 +398,10 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
                           <Terminal size={12} className="text-[#D0F870]" />
                           <p className="text-[9px] font-black uppercase text-neutral-500 tracking-widest">Prompt</p>
                        </div>
-                       <p className="text-[11px] font-medium text-neutral-300 leading-relaxed italic px-1">
-                         "{model.prompt}"
-                       </p>
+                       <p className="text-[11px] font-medium text-neutral-300 leading-relaxed italic px-1">"{model.prompt}"</p>
                     </div>
                  </div>
               </div>
-
               <div className="space-y-4">
                 <div className="flex items-center gap-2 px-1">
                     <Activity size={14} className="text-[#D0F870]" />
@@ -440,10 +432,14 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
         <div className="absolute inset-0 z-[250] bg-black/60 backdrop-blur-sm flex items-end" onClick={() => setShowExport(false)}>
            <div className="w-full bg-[#111] rounded-t-[48px] p-8 pb-12 animate-slide-up border-t border-white/10" onClick={e => e.stopPropagation()}>
               <div className="w-12 h-1 bg-neutral-800 rounded-full mx-auto mb-6" />
-              <h3 className="text-lg font-black text-white uppercase tracking-tighter mb-6">Select Format</h3>
+              <h3 className="text-lg font-black text-white uppercase tracking-tighter mb-6 text-center">Export Matrix</h3>
               <div className="grid grid-cols-4 gap-3">
                 {EXPORT_FORMATS.map(fmt => (
-                  <button key={fmt} onClick={() => handleFormatSelect(fmt)} className={`flex flex-col items-center gap-2 p-4 rounded-3xl border transition-all ${exportedFormats.has(fmt) ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-neutral-900 border-white/5 text-white active:scale-95'}`}>
+                  <button 
+                    key={fmt} 
+                    onClick={() => handleFormatSelect(fmt)} 
+                    className={`flex flex-col items-center gap-2 p-4 rounded-3xl border transition-all ${exportedFormats.has(fmt) ? 'bg-green-500/10 border-green-500 text-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]' : 'bg-neutral-900 border-white/5 text-white active:scale-95'}`}
+                  >
                     {isExporting === fmt ? <RefreshCw className="animate-spin" size={18}/> : <Box size={18}/>}
                     <span className="text-[8px] font-black uppercase">{fmt}</span>
                   </button>
@@ -452,23 +448,16 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
            </div>
         </div>
       )}
-
       {showShare && <ShareSheet onClose={() => setShowShare(false)} />}
-
       <style>{`
-        @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        .animate-slide-up { animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        
-        @keyframes rotate-y {
-          from { transform: rotateY(0deg); }
-          to { transform: rotateY(360deg); }
+        @keyframes rotate-y-smooth {
+          0% { transform: rotateY(0deg); }
+          100% { transform: rotateY(360deg); }
         }
-
         @keyframes scan-y {
-          0% { top: 0%; opacity: 0; }
-          20% { opacity: 1; }
-          80% { opacity: 1; }
-          100% { top: 100%; opacity: 0; }
+          0%, 100% { top: 10%; opacity: 0; }
+          20%, 80% { opacity: 0.8; }
+          50% { top: 90%; }
         }
       `}</style>
     </div>

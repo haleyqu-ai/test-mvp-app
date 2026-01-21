@@ -7,6 +7,8 @@ export enum NavTab {
   ME = 'me'
 }
 
+export type UserTier = 'free' | 'pro' | 'studio';
+
 export interface Model {
   id: string;
   title: string;
@@ -30,6 +32,7 @@ export interface Model {
     vertices: number;
   };
   prompt?: string;
+  retriesUsed?: number;
 }
 
 export enum RenderMode {

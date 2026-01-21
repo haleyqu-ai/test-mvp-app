@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, Crown, Sparkles, Zap, Loader2, X, ListTodo, ShieldCheck, Lock, User, Percent } from 'lucide-react';
+import { Check, Crown, Sparkles, Zap, Loader2, X, ShieldCheck, Percent, ChevronDown, ChevronUp, Calendar, Box, Star } from 'lucide-react';
 import { MESH_CREDIT_ICON } from '../constants';
+import { UserTier } from '../types';
 
 interface SubscriptionProps {
   isLoggedIn: boolean;
-  isSubscribed: boolean;
-  onSubscribeSuccess: () => void;
+  userTier: UserTier;
+  onSubscribeSuccess: (tier: UserTier) => void;
   credits: number;
   setCredits: (c: number | ((prev: number) => number)) => void;
   showCloseButton?: boolean;
@@ -17,7 +18,7 @@ interface SubscriptionProps {
 
 const Subscription: React.FC<SubscriptionProps> = ({ 
   isLoggedIn, 
-  isSubscribed, 
+  userTier, 
   onSubscribeSuccess, 
   credits, 
   setCredits, 
@@ -27,9 +28,10 @@ const Subscription: React.FC<SubscriptionProps> = ({
   language
 }) => {
   const [isPaying, setIsPaying] = useState(false);
-  const [selectedPlanPrice, setSelectedPlanPrice] = useState('$10.00');
-  const [waitingPlan, setWaitingPlan] = useState<string | null>(null);
-  const proPlanRef = useRef<HTMLDivElement>(null);
+  const [paymentMeta, setPaymentMeta] = useState({ amount: 0, price: '', tier: 'pro' as UserTier });
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  
+  const isPaidUser = isLoggedIn && userTier !== 'free';
 
   const t = {
     en: {
@@ -37,290 +39,330 @@ const Subscription: React.FC<SubscriptionProps> = ({
       unlock: 'Unlock full neural capacity',
       freeTitle: 'Free',
       freePrice: '$0',
-      freeSub: 'Entry level exploration',
-      proSub: 'advanced generation tools',
-      studioSub: 'Everything in Pro, plus:',
-      getPro: 'Get Pro Now',
-      getStudio: 'Get Studio',
+      proTitle: 'Pro',
+      studioTitle: 'Studio',
+      proSub: 'Advanced Generation Tools',
+      studioSub: 'Maximum Neural Output',
+      subscribe: 'Subscribe',
       recommended: 'Recommended',
-      promoTag: '50% OFF FIRST MONTH',
-      strikePrice: 'Was $20'
+      promoTag: 'SAVE 20% YEARLY',
+      promo50: '50% FOR FIRST MONTH',
+      currentTier: 'Current Tier',
+      activeSub: 'ACTIVE SUBSCRIPTION',
+      benefits: 'Current Benefits',
+      monthly: 'Monthly',
+      yearly: 'Yearly',
+      nextRenewal: 'Next Renewal Date',
+      currentPlan: 'Current Plan',
+      synapseRefuel: 'Synapse Refuel',
+      creditTopup: 'Meshy AI Credit Top-up',
+      confirmFaceId: 'Double Click to Pay',
+      syncing: 'Syncing Transaction',
+      credits: 'CREDITS',
+      ultimate: 'The Ultimate Creative Suite'
     },
     zh: {
       selectPlan: '选择方案',
       unlock: '开启全部神经算力',
       freeTitle: '免费版',
       freePrice: '¥0',
-      freeSub: '入门级探索',
+      proTitle: '专业版',
+      studioTitle: '旗舰版',
       proSub: '高级生成工具',
-      studioSub: 'Pro 版所有权益，以及：',
-      getPro: '立即获取 Pro',
-      getStudio: '获取 Studio',
-      recommended: '最受欢迎',
-      promoTag: '首月 5 折优惠',
-      strikePrice: '原价 $20'
+      studioSub: '顶级神经算力输出',
+      subscribe: '订阅',
+      recommended: '推荐方案',
+      promoTag: '年度订阅立省 20%',
+      promo50: '首月 5 折优惠',
+      currentTier: '当前方案',
+      activeSub: '订阅生效中',
+      benefits: '当前权益',
+      monthly: '按月',
+      yearly: '按年',
+      nextRenewal: '下次续费时间',
+      currentPlan: '当前方案',
+      synapseRefuel: '增购积分',
+      creditTopup: 'Meshy AI 积分充值',
+      confirmFaceId: '双击侧边按钮支付',
+      syncing: '交易同步中',
+      credits: '积分余额',
+      ultimate: '极致创意套件'
     }
   }[language];
 
-  // Auto-resume subscription after login
-  useEffect(() => {
-    if (isLoggedIn && waitingPlan) {
-      handleSubscribe(waitingPlan);
-      setWaitingPlan(null);
-    }
-  }, [isLoggedIn, waitingPlan]);
-
-  // Default focus on Pro Plan when opening the page
-  useEffect(() => {
-    if (!isSubscribed) {
-      const timer = setTimeout(() => {
-        proPlanRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isSubscribed]);
-
-  const handleSubscribe = (price: string) => {
-    if (!isLoggedIn) {
-      setWaitingPlan(price);
-      onLoginTrigger();
-      return;
-    }
-
-    setSelectedPlanPrice(price);
+  const handleSubscribeTrigger = (price: string, tier: UserTier) => {
+    if (!isLoggedIn) { onLoginTrigger(); return; }
+    if (userTier === tier) return;
+    setPaymentMeta({ amount: 0, price, tier });
     setIsPaying(true);
+    
     setTimeout(() => {
-      onSubscribeSuccess();
+      onSubscribeSuccess(tier);
       setIsPaying(false);
-    }, 2000);
+    }, 3000);
   };
 
-  const handleBuyCredits = (amount: number) => {
-    if (!isLoggedIn) {
-      onLoginTrigger();
-      return;
-    }
-    setCredits(prev => (typeof prev === 'number' ? prev + amount : prev));
-    alert(`Transmission complete. +${amount} Credits synced.`);
-  };
-
+  const freeFeatures = ['100 monthly credits', '1 task in queue'];
   const proFeatures = [
-    'advanced generation tools',
+    'Advanced generation tools',
     '1,000 monthly credits',
     'Unlock all features on web & app',
     '10 tasks in queue',
     'High queue priority',
     '4 free retries for each task'
   ];
-
   const studioFeatures = [
     '4,000 monthly credits',
     '20 tasks in queue',
     'Higher queue priority',
-    '8 free retries for each task'
+    '8 free retries for each task',
+    'Early access to new models'
   ];
 
-  if (isSubscribed) {
+  const renderPaymentOverlay = () => {
+    if (!isPaying) return null;
     return (
-      <div className="px-6 py-6 flex flex-col gap-8 h-full bg-meshy-dark overflow-y-auto pb-40">
-        <header className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-black uppercase tracking-tighter text-white">Current Tier</h1>
-            <p className="text-[#D0F870] text-[10px] font-black uppercase tracking-widest">Active Subscription</p>
-          </div>
-          <div className="bg-[#D0F870] px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-[0_0_15px_rgba(208,248,112,0.4)]">
-             <Crown size={12} className="text-black" />
-             <span className="text-xs font-black text-black uppercase">Pro</span>
-          </div>
-        </header>
+      <div className="fixed inset-0 z-[600] bg-black/80 backdrop-blur-xl flex items-end px-4 pb-12 pointer-events-auto animate-in fade-in duration-300">
+         <div className="w-full max-w-[400px] mx-auto bg-[#0F0F0F] rounded-[32px] p-8 animate-slide-up flex flex-col items-center gap-7 shadow-2xl border border-white/5">
+            <div className="w-12 h-1.5 bg-neutral-800 rounded-full" />
+            
+            <div className={`w-20 h-20 rounded-[20px] flex items-center justify-center shadow-lg ${paymentMeta.tier === 'studio' ? 'bg-[#C084FC] shadow-[#C084FC]/30' : 'bg-[#D0F870] shadow-[#D0F870]/30'}`}>
+              {paymentMeta.tier === 'studio' ? <Star size={40} className="text-black" /> : <Crown size={40} className="text-black" />}
+            </div>
 
-        <div className="bg-gradient-to-br from-purple-900/20 to-black border border-[#C084FC]/30 p-7 rounded-[40px] flex flex-col gap-6 relative overflow-hidden group">
-           <div className="flex justify-between items-start z-10">
-             <div>
-               <h3 className="text-xl font-black text-white uppercase tracking-tighter">Studio Tier</h3>
-               <p className="text-[#C084FC] text-[9px] font-black uppercase tracking-[0.2em]">{t.studioSub}</p>
-             </div>
-             <span className="text-2xl font-black text-white">$60<span className="text-[10px] text-[#C084FC] font-bold">/mo</span></span>
-           </div>
-           
-           <ul className="space-y-3 z-10">
-              {studioFeatures.map(f => (
-                <li key={f} className="flex items-start gap-3 text-[10px] font-black uppercase text-white/80 leading-tight">
-                   <div className="p-1 bg-[#C084FC]/20 rounded-lg shrink-0">
-                      <Sparkles size={12} className="text-[#C084FC]" />
-                   </div>
-                   {f}
-                </li>
-              ))}
-           </ul>
+            <div className="text-center space-y-1">
+              <h3 className="text-xl font-bold text-white tracking-tight">Meshy AI {paymentMeta.tier.toUpperCase()}</h3>
+              <p className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest">
+                Renewal • {paymentMeta.price}
+              </p>
+            </div>
 
-           <button className="bg-[#C084FC] py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-black shadow-xl shadow-[#C084FC]/20 active:scale-95 transition-all z-10">
-             Upgrade Plan
-           </button>
-        </div>
+            <div className="w-full space-y-5 border-t border-white/5 pt-6">
+               <div className="flex justify-between items-center text-[10px] font-black uppercase text-neutral-500">
+                 <span>Account</span><span className="text-white lowercase tracking-normal">chumming.q@icloud.com</span>
+               </div>
+               <div className="flex justify-between items-center text-[10px] font-black uppercase text-neutral-400">
+                 <span className="animate-pulse">{t.confirmFaceId}</span>
+                 <div className="w-8 h-8 flex items-center justify-center relative">
+                    <div className="w-6 h-6 border-2 border-[#007AFF] rounded-lg" />
+                 </div>
+               </div>
+            </div>
 
-        <div className="mt-4">
-          <h2 className="text-xs font-black uppercase tracking-[0.2em] text-neutral-500 mb-6 px-1">Synapse Refuel</h2>
-          <div className="flex flex-col gap-4">
-            {[
-              { amount: 500, price: '$10', label: 'Lite Buffer', icon: Zap },
-              { amount: 2500, price: '$40', label: 'Creation Pack', icon: Crown, popular: true },
-              { amount: 10000, price: '$120', label: 'Mass Matrix', icon: Sparkles },
-            ].map(tier => (
-              <button 
-                key={tier.amount}
-                onClick={() => handleBuyCredits(tier.amount)}
-                className={`relative bg-neutral-900/40 border ${tier.popular ? 'border-[#D0F870]' : 'border-white/5'} rounded-[32px] p-5 flex items-center justify-between active:scale-[0.98] transition-all`}
-              >
-                <div className="flex items-center gap-4">
-                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${tier.popular ? 'bg-[#D0F870] shadow-[0_0_15px_rgba(208,248,112,0.3)]' : 'bg-neutral-800'}`}>
-                      <img src={MESH_CREDIT_ICON} className={`w-6 h-6 object-contain ${tier.popular ? '' : 'grayscale opacity-50'}`} alt="Credits" />
-                   </div>
-                   <div className="text-left">
-                      <p className="text-sm font-black text-white">{tier.amount.toLocaleString()} <span className="text-[10px] opacity-40 uppercase tracking-widest ml-1">Credits</span></p>
-                      <p className="text-[9px] font-bold text-neutral-500 uppercase tracking-tighter">{tier.label}</p>
-                   </div>
-                </div>
-                <span className="text-lg font-black text-white">{tier.price}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+            <div className="flex flex-col items-center gap-5 mt-2">
+               <div className="relative w-11 h-11">
+                 <div className="absolute inset-0 border-[3px] border-transparent border-t-[#007AFF] rounded-full animate-spin" />
+               </div>
+               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-500 animate-pulse">{t.syncing}</p>
+            </div>
+         </div>
       </div>
     );
-  }
+  };
 
   return (
-    <div className="px-6 py-8 flex flex-col gap-6 h-full bg-meshy-dark overflow-y-auto pb-40 relative scroll-smooth">
+    <div className="flex flex-col h-full bg-meshy-dark overflow-y-auto pb-48 relative scroll-smooth hide-scrollbar">
       {showCloseButton && (
-        <button 
-          onClick={onClose}
-          className="absolute top-8 right-6 p-2 bg-neutral-900 rounded-full text-white active:scale-90 z-50"
-        >
+        <button onClick={onClose} className="absolute top-8 right-6 p-2 bg-neutral-900 border border-white/10 rounded-full text-white active:scale-90 z-50 shadow-xl">
           <X size={20} />
         </button>
       )}
-      
-      <header className="text-center">
-        <h1 className="text-3xl font-black mb-1 uppercase tracking-tighter text-white">{t.selectPlan}</h1>
-        <p className="text-neutral-500 text-[9px] font-black uppercase tracking-[0.25em]">{t.unlock}</p>
-      </header>
 
-      <div className="flex flex-col gap-6">
-        {/* Free Plan */}
-        <div className="bg-neutral-900/40 border border-white/5 rounded-[40px] p-7 flex flex-col gap-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-black uppercase tracking-tight text-neutral-400">{t.freeTitle}</h2>
-            <span className="text-xl font-black text-neutral-500">{t.freePrice}</span>
-          </div>
-          <p className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest">{t.freeSub}</p>
-          <ul className="space-y-2">
-            {['100 monthly credits', 'Standard Quality'].map(f => (
-              <li key={f} className="flex items-center gap-2 text-[10px] font-bold uppercase text-neutral-500"><Check size={12} /> {f}</li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Pro Plan */}
-        <div ref={proPlanRef} className="bg-neutral-950/60 backdrop-blur-md border-2 border-[#D0F870] rounded-[40px] p-7 flex flex-col gap-5 relative shadow-[0_0_30px_rgba(208,248,112,0.25)] ring-1 ring-[#D0F870]/20">
-          <div className="absolute top-0 right-10 bg-[#D0F870] text-black text-[8px] font-black px-4 py-1 rounded-b-xl uppercase tracking-widest z-10">{t.recommended}</div>
-          
-          {/* Promo Badge - Position updated to be closer to top border */}
-          <div className="absolute -left-2 top-3 rotate-[-12deg] bg-[#fbbf24] text-black text-[8px] font-black px-3 py-1.5 rounded-lg shadow-xl border border-black/10 flex items-center gap-1 animate-bounce z-10">
-            <Percent size={10} strokeWidth={3} />
-            {t.promoTag}
-          </div>
-
-          <div className="flex justify-between items-end">
-            <h2 className="text-2xl font-black uppercase tracking-tight text-white flex items-center gap-2">
-              Pro <Crown size={18} className="text-[#D0F870]" />
-            </h2>
-            <div className="flex flex-col items-end">
-              <span className="text-xs font-bold text-neutral-500 line-through decoration-[#D0F870]/60 decoration-2">{t.strikePrice}</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-black text-[#D0F870]">$10</span>
-                <span className="text-[10px] font-bold text-neutral-400 uppercase">/mo</span>
+      <div className="px-6 py-6 flex flex-col gap-8">
+        {/* Active Subscription Dashboard for Paid Users */}
+        {isPaidUser ? (
+          <header className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500 bg-neutral-900/40 rounded-[24px] p-8 border border-white/5 shadow-2xl">
+            <div className="flex justify-between items-center">
+              <div className="space-y-1.5 text-left">
+                <h1 className="text-2xl font-bold text-white tracking-tight leading-none">{t.currentTier}</h1>
+                <p className="text-[#D0F870] text-[9px] font-black uppercase tracking-[0.2em]">{t.activeSub}</p>
+              </div>
+              <div className={`h-[44px] px-6 rounded-xl flex items-center gap-3 shadow-[0_0_20px_rgba(208,248,112,0.3)] transition-all ${userTier === 'studio' ? 'bg-white text-black' : 'bg-[#D0F870] text-black'}`}>
+                 {userTier === 'studio' ? <Star size={16} strokeWidth={2.5} /> : <Crown size={16} strokeWidth={2.5} />}
+                 <span className="text-[13px] font-black uppercase tracking-widest">{userTier}</span>
               </div>
             </div>
-          </div>
+            
+            <div className="bg-black/40 border border-white/5 rounded-2xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-5">
+                 <div className="w-12 h-12 bg-neutral-900 rounded-xl flex items-center justify-center border border-white/5">
+                    <img src={MESH_CREDIT_ICON} className="w-8 h-8 object-contain" alt="Credits" />
+                 </div>
+                 <div className="flex flex-col items-start">
+                    <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest leading-none mb-1.5">{t.credits}</span>
+                    <span className="text-2xl font-bold text-white tracking-tight tabular-nums leading-none">{credits.toLocaleString()}</span>
+                 </div>
+              </div>
+            </div>
+          </header>
+        ) : (
+          /* Billing Toggle and Header for Guests or Free Users */
+          <header className="text-center space-y-6 mt-4">
+            <div className="space-y-1">
+               <h1 className="text-2xl font-bold uppercase tracking-tight text-white">{t.selectPlan}</h1>
+               <p className="text-neutral-500 text-[9px] font-black uppercase tracking-[0.2em]">{t.unlock}</p>
+            </div>
+            <div className="flex justify-center">
+              <div className="bg-neutral-900/80 backdrop-blur-md p-1 rounded-xl flex items-center gap-1 border border-white/5 shadow-inner">
+                <button 
+                  onClick={() => setBillingCycle('monthly')}
+                  className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${billingCycle === 'monthly' ? 'bg-[#D0F870] text-black shadow-lg' : 'text-neutral-500'}`}
+                >
+                  {t.monthly}
+                </button>
+                <button 
+                  onClick={() => setBillingCycle('yearly')}
+                  className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all relative flex items-center gap-2 ${billingCycle === 'yearly' ? 'bg-[#D0F870] text-black shadow-lg' : 'text-neutral-500'}`}
+                >
+                  {t.yearly}
+                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${billingCycle === 'yearly' ? 'bg-black text-[#D0F870]' : 'bg-neutral-800 text-neutral-500'}`}>-20%</span>
+                </button>
+              </div>
+            </div>
+          </header>
+        )}
 
-          <p className="text-[9px] font-black text-[#D0F870] uppercase tracking-widest leading-tight">{t.proSub}</p>
-          
-          <ul className="space-y-3">
-            {proFeatures.map(f => (
-              <li key={f} className="flex items-start gap-3 text-[10px] font-black uppercase text-white leading-tight">
-                <Check size={14} className="text-[#D0F870] shrink-0 mt-0.5" /> 
-                {f}
-              </li>
-            ))}
-          </ul>
+        <div className="flex flex-col gap-6">
+          {/* PRO PLAN */}
+          {(userTier === 'free' || !isLoggedIn || userTier === 'pro') && (
+            <div className={`bg-neutral-900/40 backdrop-blur-md border-2 ${userTier === 'pro' ? 'border-[#D0F870]' : 'border-white/5'} rounded-[24px] p-8 flex flex-col gap-6 relative shadow-2xl overflow-hidden transition-all duration-500`}>
+              {/* Horizontal Alignment for Labels */}
+              <div className="absolute top-0 left-0 right-0 flex justify-between items-start pointer-events-none">
+                <div className="bg-[#C084FC]/20 border-x border-b border-[#C084FC]/40 px-3 py-1.5 rounded-b-lg h-[28px] flex items-center pointer-events-auto">
+                  <span className="text-[7.5px] font-bold text-[#C084FC] uppercase tracking-wider">{billingCycle === 'monthly' ? t.promo50 : t.promoTag}</span>
+                </div>
+                {!isPaidUser && (
+                  <div className="bg-[#D0F870] text-black text-[7.5px] font-bold px-4 py-1.5 rounded-b-lg uppercase tracking-widest shadow-lg h-[28px] flex items-center pointer-events-auto">
+                    {t.recommended}
+                  </div>
+                )}
+              </div>
 
-          <button 
-            onClick={() => handleSubscribe('$10.00')}
-            disabled={isPaying}
-            className="w-full py-5 rounded-[24px] bg-[#D0F870] text-sm font-black text-black shadow-xl shadow-[#D0F870]/20 active:scale-[0.97] transition-all flex items-center justify-center gap-3 mt-2"
-          >
-            {isPaying && selectedPlanPrice === '$10.00' ? <Loader2 size={18} className="animate-spin" /> : <img src={MESH_CREDIT_ICON} className="w-5 h-5 object-contain invert" alt="" />}
-            {t.getPro}
-          </button>
-        </div>
+              <div className="flex justify-between items-end mt-4">
+                <div className="space-y-1 text-left">
+                  <h2 className={`text-2xl font-bold uppercase tracking-tight flex items-center gap-2 ${userTier === 'pro' ? 'text-[#D0F870]' : 'text-white'}`}>
+                    PRO <Crown size={18} className={userTier === 'pro' ? 'text-[#D0F870]' : 'text-neutral-600'} />
+                  </h2>
+                  <p className="text-[10px] font-bold text-[#D0F870] uppercase tracking-wide opacity-80">{t.proSub}</p>
+                </div>
+                <div className="flex flex-col items-end">
+                  {!isPaidUser && <span className="text-xs font-bold text-neutral-600 line-through tracking-tighter">$20</span>}
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold text-white">${billingCycle === 'monthly' ? 10 : 16}</span>
+                    <span className="text-[10px] font-bold text-neutral-500">/mo</span>
+                  </div>
+                </div>
+              </div>
 
-        {/* Studio Plan */}
-        <div className="bg-gradient-to-br from-purple-900/20 to-black border border-[#C084FC]/30 rounded-[40px] p-7 flex flex-col gap-5 relative overflow-hidden group">
-          <div className="flex justify-between items-center relative z-10">
-            <h2 className="text-2xl font-black uppercase tracking-tight text-white flex items-center gap-2">
-              Studio <Sparkles size={18} className="text-[#C084FC]" />
-            </h2>
-            <span className="text-3xl font-black text-white">$60</span>
-          </div>
-          <p className="text-[9px] font-black text-[#C084FC] uppercase tracking-widest relative z-10 leading-tight">{t.studioSub}</p>
-          <ul className="space-y-3 relative z-10">
-            {studioFeatures.map(f => (
-              <li key={f} className="flex items-start gap-3 text-[10px] font-black uppercase text-white/90 leading-tight">
-                <Check size={14} className="text-[#C084FC] shrink-0 mt-0.5" /> 
-                {f}
-              </li>
-            ))}
-          </ul>
-          <button 
-            onClick={() => handleSubscribe('$60.00')}
-            disabled={isPaying}
-            className="w-full py-5 rounded-[24px] bg-[#C084FC] border border-white/10 text-black text-sm font-black uppercase tracking-widest active:scale-[0.97] transition-all flex items-center justify-center gap-3 relative z-10"
-          >
-            {isPaying && selectedPlanPrice === '$60.00' ? <Loader2 size={18} className="animate-spin" /> : <img src={MESH_CREDIT_ICON} className="w-5 h-5 object-contain invert" alt="" />}
-            {t.getStudio}
-          </button>
+              <ul className="space-y-4 py-2 text-left">
+                {proFeatures.map(f => (
+                  <li key={f} className="flex items-center gap-3 text-[10px] font-bold text-neutral-300 tracking-wide">
+                    <Check size={14} className="text-[#D0F870] shrink-0" /> {f.toUpperCase()}
+                  </li>
+                ))}
+              </ul>
+
+              <button 
+                onClick={() => handleSubscribeTrigger(billingCycle === 'monthly' ? '$10.00' : '$192.00', 'pro')} 
+                disabled={userTier === 'pro'}
+                className={`w-full py-5 rounded-xl text-[11px] font-bold uppercase tracking-[0.2em] transition-all ${userTier === 'pro' ? 'bg-neutral-800 text-neutral-500' : 'bg-[#D0F870] text-black active:scale-[0.97] shadow-lg shadow-[#D0F870]/20'}`}
+              >
+                {userTier === 'pro' ? t.currentPlan : t.subscribe}
+              </button>
+            </div>
+          )}
+
+          {/* STUDIO PLAN */}
+          {(userTier !== 'studio') && (
+            <div className={`bg-neutral-900/40 backdrop-blur-md border-2 border-white/5 rounded-[24px] p-8 flex flex-col gap-6 relative shadow-2xl overflow-hidden transition-all duration-500`}>
+              <div className="flex justify-between items-end">
+                <div className="space-y-1 text-left">
+                  <h2 className={`text-2xl font-bold uppercase tracking-tight flex items-center gap-2 text-white`}>
+                    STUDIO <Star size={18} className="text-neutral-600" />
+                  </h2>
+                  <p className="text-[10px] font-bold text-[#C084FC] uppercase tracking-wide opacity-80">{t.studioSub}</p>
+                </div>
+                <div className="flex flex-col items-end">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold text-white">${billingCycle === 'monthly' ? 60 : 48}</span>
+                    <span className="text-[10px] font-bold text-neutral-500">/mo</span>
+                  </div>
+                </div>
+              </div>
+              
+              <ul className="space-y-4 py-2 text-left">
+                {studioFeatures.map(f => (
+                  <li key={f} className="flex items-center gap-3 text-[10px] font-bold text-neutral-300 tracking-wide">
+                    <Check size={14} className="text-[#C084FC] shrink-0" /> {f.toUpperCase()}
+                  </li>
+                ))}
+              </ul>
+
+              <button 
+                onClick={() => handleSubscribeTrigger(billingCycle === 'monthly' ? '$60.00' : '$576.00', 'studio')} 
+                className={`w-full py-5 rounded-xl text-[11px] font-bold uppercase tracking-[0.2em] transition-all bg-white text-black active:scale-[0.97] shadow-xl`}
+              >
+                {t.subscribe}
+              </button>
+              
+              <p className="text-center text-[8px] font-bold uppercase tracking-[0.3em] text-neutral-600">{t.ultimate}</p>
+            </div>
+          )}
+
+          {/* User's Actual Studio Plan Card (shown if tier is studio) */}
+          {userTier === 'studio' && (
+            <div className={`bg-neutral-900/40 backdrop-blur-md border-2 border-[#C084FC] rounded-[24px] p-8 flex flex-col gap-6 relative shadow-2xl overflow-hidden`}>
+              <div className="flex justify-between items-end">
+                <div className="space-y-1 text-left">
+                  <h2 className="text-2xl font-bold uppercase tracking-tight flex items-center gap-2 text-[#C084FC]">
+                    STUDIO <Star size={18} className="text-[#C084FC]" />
+                  </h2>
+                  <p className="text-[10px] font-bold text-[#C084FC] uppercase tracking-wide opacity-80">{t.studioSub}</p>
+                </div>
+              </div>
+              
+              <ul className="space-y-4 py-2 text-left">
+                {studioFeatures.map(f => (
+                  <li key={f} className="flex items-center gap-3 text-[10px] font-bold text-neutral-300 tracking-wide">
+                    <Check size={14} className="text-[#C084FC] shrink-0" /> {f.toUpperCase()}
+                  </li>
+                ))}
+              </ul>
+
+              <button disabled className="w-full py-5 rounded-xl text-[11px] font-bold uppercase tracking-[0.2em] bg-neutral-800 text-neutral-500">
+                {t.currentPlan}
+              </button>
+            </div>
+          )}
+
+          {/* FREE PLAN */}
+          {!isPaidUser && (
+            <div className={`bg-neutral-900/10 border border-white/5 rounded-[20px] p-6 flex flex-col gap-4 relative opacity-50`}>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <Box size={16} className="text-neutral-500" />
+                  <h2 className="text-sm font-bold uppercase tracking-tight text-white">{t.freeTitle}</h2>
+                </div>
+                <span className="text-sm font-bold text-neutral-500">{t.freePrice}</span>
+              </div>
+
+              <ul className="flex flex-wrap gap-x-6 gap-y-2 text-left">
+                {freeFeatures.map(f => (
+                  <li key={f} className="flex items-center gap-2 text-[8px] font-bold uppercase text-neutral-500 tracking-wide">
+                    <Check size={10} className="text-neutral-700 shrink-0" /> {f}
+                  </li>
+                ))}
+              </ul>
+
+              <button disabled className="w-full py-3.5 rounded-xl bg-neutral-900/50 text-neutral-600 text-[9px] font-bold uppercase tracking-widest">
+                {userTier === 'free' ? t.currentPlan : 'Unavailable'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
-      
-      {isPaying && (
-        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-end px-4 pb-8 pointer-events-auto">
-           <div className="w-full max-w-[400px] mx-auto bg-neutral-900 rounded-[48px] p-8 animate-slide-up flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5">
-              <div className="w-12 h-1.5 bg-neutral-800 rounded-full" />
-              <div className="w-20 h-20 bg-[#D0F870] rounded-[30px] flex items-center justify-center shadow-[0_0_20px_rgba(208,248,112,0.4)]">
-                 <Crown size={40} className="text-black" />
-              </div>
-              <div className="text-center">
-                <h3 className="text-xl font-black text-white">Meshy AI Subscription</h3>
-                <p className="text-neutral-500 text-sm font-bold uppercase mt-1">Automatic Renewal • {selectedPlanPrice}/mo</p>
-              </div>
-              <div className="w-full space-y-5 border-t border-white/5 pt-6">
-                 <div className="flex justify-between items-center text-[10px] font-black uppercase text-neutral-500">
-                   <span>Apple ID</span>
-                   <span className="text-white">chumming.q@icloud.com</span>
-                 </div>
-                 <div className="flex justify-between items-center text-[10px] font-black uppercase text-neutral-400">
-                   <span>Confirm with FaceID</span>
-                   <div className="w-6 h-6 border-2 border-[#D0F870] rounded-lg animate-pulse" />
-                 </div>
-              </div>
-              <div className="flex flex-col items-center gap-4 mt-2">
-                 <div className="w-10 h-10 border-4 border-white/10 border-t-[#D0F870] rounded-full animate-spin" />
-                 <p className="text-[9px] font-black uppercase tracking-[0.3em] text-neutral-600">Syncing with iCloud</p>
-              </div>
-           </div>
-        </div>
-      )}
+
+      {renderPaymentOverlay()}
     </div>
   );
 };
