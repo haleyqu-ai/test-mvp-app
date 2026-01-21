@@ -1,0 +1,7 @@
+{
+  "name": "Meshy App MVP",
+  "description": "A high-fidelity mobile web prototype for Meshy, featuring 3D model exploration, interactive viewer, and creation tools.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

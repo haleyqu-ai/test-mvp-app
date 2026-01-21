@@ -1,0 +1,72 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Meshy Mobile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --meshy-bg: 
+              radial-gradient(at 0% 0%, rgba(208, 248, 112, 0.12) 0%, transparent 40%),
+              radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.12) 0%, transparent 40%),
+              radial-gradient(at 50% 100%, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
+              #000000;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000000;
+            color: #fff;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .bg-meshy-dark {
+            background: var(--meshy-bg) !important;
+        }
+
+        /* Custom scrollbar for horizontal tabs */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        model-viewer {
+          width: 100%;
+          height: 100%;
+          --poster-color: transparent;
+        }
+
+        /* Smooth slide-up animation for sheets */
+        @keyframes slide-up { 
+          from { transform: translateY(100%); } 
+          to { transform: translateY(0); } 
+        }
+        .animate-slide-up { 
+          animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="root"></div>
+</body>
+</html>
