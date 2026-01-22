@@ -2,9 +2,11 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { EXPLORE_CHANNELS, MOCK_MODELS } from '../constants';
 import { Model } from '../types';
+import { Box, Image as ImageIcon } from 'lucide-react';
 
 interface ExploreProps {
   onModelClick: (model: Model, isWorkspace: boolean) => void;
+  onNavigateToCreate: (mode: 'image3d' | 'genImage') => void;
   language: 'en' | 'zh';
 }
 
@@ -58,7 +60,7 @@ const ModelCard: React.FC<{ model: Model; onClick: (model: Model) => void; index
   );
 };
 
-const Explore: React.FC<ExploreProps> = ({ onModelClick, language }) => {
+const Explore: React.FC<ExploreProps> = ({ onModelClick, onNavigateToCreate, language }) => {
   const [activeChannel, setActiveChannel] = useState(EXPLORE_CHANNELS[0]);
   const [loading, setLoading] = useState(true);
   const activeTabRef = useRef<HTMLButtonElement>(null);
@@ -66,8 +68,22 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick, language }) => {
   const horizontalScrollRef = useRef<HTMLDivElement>(null);
   const verticalScrollRef = useRef<HTMLDivElement>(null);
   
-  const isDragging = useRef(false);
-  const startPos = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+  const isDraggingH = useRef(false);
+  const isDraggingV = useRef(false);
+  
+  const startPosH = useRef({ x: 0, scrollLeft: 0 });
+  const startPosV = useRef({ y: 0, scrollTop: 0 });
+
+  const t = {
+    en: {
+      ai3d: 'AI 3D',
+      aiImage: 'AI Image'
+    },
+    zh: {
+      ai3d: 'AI 3D',
+      aiImage: 'AI 图片'
+    }
+  }[language];
 
   const channelMap: Record<string, { en: string; zh: string }> = {
     'Featured': { en: 'Featured', zh: '精品' },
@@ -106,36 +122,35 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick, language }) => {
     }
   }, [activeChannel]);
 
+  // Horizontal Dragging Logic
   const handleHorizontalMouseDown = (e: React.MouseEvent) => {
     const slider = horizontalScrollRef.current;
     if (!slider) return;
-    isDragging.current = true;
-    startPos.current = {
+    isDraggingH.current = true;
+    startPosH.current = {
       x: e.pageX - slider.offsetLeft,
-      y: 0,
-      scrollLeft: slider.scrollLeft,
-      scrollTop: 0
+      scrollLeft: slider.scrollLeft
     };
     slider.style.cursor = 'grabbing';
     slider.style.userSelect = 'none';
+    e.stopPropagation(); // Prevent vertical container from firing
   };
 
   const handleHorizontalMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging.current || !horizontalScrollRef.current) return;
+    if (!isDraggingH.current || !horizontalScrollRef.current) return;
     e.preventDefault();
     const x = e.pageX - horizontalScrollRef.current.offsetLeft;
-    const walk = (x - startPos.current.x) * 2;
-    horizontalScrollRef.current.scrollLeft = startPos.current.scrollLeft - walk;
+    const walk = (x - startPosH.current.x) * 2;
+    horizontalScrollRef.current.scrollLeft = startPosH.current.scrollLeft - walk;
   };
 
+  // Vertical Dragging Logic
   const handleVerticalMouseDown = (e: React.MouseEvent) => {
     const container = verticalScrollRef.current;
     if (!container) return;
-    isDragging.current = true;
-    startPos.current = {
-      x: 0,
+    isDraggingV.current = true;
+    startPosV.current = {
       y: e.pageY - container.offsetTop,
-      scrollLeft: 0,
       scrollTop: container.scrollTop
     };
     container.style.cursor = 'grabbing';
@@ -143,16 +158,17 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick, language }) => {
   };
 
   const handleVerticalMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging.current || !verticalScrollRef.current) return;
+    if (!isDraggingV.current || !verticalScrollRef.current) return;
     const y = e.pageY - verticalScrollRef.current.offsetTop;
-    const walk = (y - startPos.current.y) * 1.5;
-    verticalScrollRef.current.scrollTop = startPos.current.scrollTop - walk;
+    const walk = (y - startPosV.current.y) * 1.5;
+    verticalScrollRef.current.scrollTop = startPosV.current.scrollTop - walk;
   };
 
   const handleGlobalMouseUp = () => {
-    isDragging.current = false;
+    isDraggingH.current = false;
+    isDraggingV.current = false;
     if (horizontalScrollRef.current) {
-      horizontalScrollRef.current.style.cursor = 'default';
+      horizontalScrollRef.current.style.cursor = 'grab';
       horizontalScrollRef.current.style.removeProperty('user-select');
     }
     if (verticalScrollRef.current) {
@@ -162,55 +178,87 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick, language }) => {
   };
 
   const handleChannelClick = (channel: string, e: React.MouseEvent) => {
-    const moveX = Math.abs((e.pageX - (horizontalScrollRef.current?.offsetLeft || 0)) - startPos.current.x);
+    if (!horizontalScrollRef.current) return;
+    const x = e.pageX - horizontalScrollRef.current.offsetLeft;
+    const moveX = Math.abs(x - startPosH.current.x);
     if (moveX > 5) return;
     setActiveChannel(channel);
   };
 
   const handleModelClickThrottled = (model: Model, e: React.MouseEvent) => {
-    const moveY = Math.abs((e.pageY - (verticalScrollRef.current?.offsetTop || 0)) - startPos.current.y);
+    if (!verticalScrollRef.current) return;
+    const y = e.pageY - verticalScrollRef.current.offsetTop;
+    const moveY = Math.abs(y - startPosV.current.y);
     if (moveY > 5) return;
     onModelClick(model, false);
   };
 
   return (
     <div 
-      className="flex flex-col h-full bg-meshy-dark min-h-0"
+      className="flex flex-col h-full bg-meshy-dark min-h-0 overflow-hidden"
       onMouseUp={handleGlobalMouseUp}
       onMouseLeave={handleGlobalMouseUp}
     >
-      <div className="sticky top-0 bg-black/95 backdrop-blur-xl border-b border-white/10 z-[60] pt-4 pb-1">
-        <div 
-          ref={horizontalScrollRef}
-          onMouseDown={handleHorizontalMouseDown}
-          onMouseMove={handleHorizontalMouseMove}
-          className="overflow-x-auto hide-scrollbar flex whitespace-nowrap px-4 gap-7 scroll-smooth select-none cursor-grab"
-        >
-          {EXPLORE_CHANNELS.map((channel) => (
-            <button
-              key={channel}
-              ref={activeChannel === channel ? activeTabRef : null}
-              onMouseUp={(e) => handleChannelClick(channel, e)}
-              className={`pb-3 pt-1 text-[10px] font-black uppercase tracking-[0.12em] transition-all relative shrink-0 ${
-                activeChannel === channel ? 'text-[#D0F870]' : 'text-neutral-500 hover:text-neutral-300'
-              }`}
-            >
-              {channelMap[channel]?.[language] || channel}
-              {activeChannel === channel && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#D0F870] rounded-full shadow-[0_0_12px_rgba(208,248,112,0.8)]" />
-              )}
-            </button>
-          ))}
-          <div className="w-8 shrink-0" />
-        </div>
-      </div>
-
       <div 
         ref={verticalScrollRef}
         onMouseDown={handleVerticalMouseDown}
         onMouseMove={handleVerticalMouseMove}
-        className="flex-1 overflow-y-auto hide-scrollbar select-none cursor-default"
+        className="flex-1 overflow-y-auto hide-scrollbar select-none cursor-default scroll-smooth"
       >
+        {/* Header content that scrolls away */}
+        <div className="pt-4 pb-4 px-4 flex gap-3">
+          <button 
+            onMouseUp={(e) => {
+               const y = e.pageY - (verticalScrollRef.current?.offsetTop || 0);
+               if (Math.abs(y - startPosV.current.y) <= 5) onNavigateToCreate('image3d');
+            }}
+            className="flex-1 h-14 bg-neutral-900/60 border border-white/5 rounded-2xl flex items-center justify-center gap-2.5 active:scale-[0.97] active:bg-neutral-800 transition-all group overflow-hidden relative cursor-pointer"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-[#D0F870]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <Box size={18} className="text-[#D0F870]" />
+            <span className="text-[11px] font-black uppercase tracking-[0.1em] text-white/90">{t.ai3d}</span>
+          </button>
+          <button 
+            onMouseUp={(e) => {
+              const y = e.pageY - (verticalScrollRef.current?.offsetTop || 0);
+              if (Math.abs(y - startPosV.current.y) <= 5) onNavigateToCreate('genImage');
+            }}
+            className="flex-1 h-14 bg-neutral-900/60 border border-white/5 rounded-2xl flex items-center justify-center gap-2.5 active:scale-[0.97] active:bg-neutral-800 transition-all group overflow-hidden relative cursor-pointer"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-[#C084FC]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <ImageIcon size={18} className="text-[#C084FC]" />
+            <span className="text-[11px] font-black uppercase tracking-[0.1em] text-white/90">{t.aiImage}</span>
+          </button>
+        </div>
+
+        {/* Sticky Channel Tabs */}
+        <div className="sticky top-0 bg-black/95 backdrop-blur-2xl border-b border-white/10 z-[60] pt-2 pb-1.5 shadow-xl">
+          <div 
+            ref={horizontalScrollRef}
+            onMouseDown={handleHorizontalMouseDown}
+            onMouseMove={handleHorizontalMouseMove}
+            className="overflow-x-auto hide-scrollbar flex whitespace-nowrap px-4 gap-7 scroll-smooth select-none cursor-grab"
+          >
+            {EXPLORE_CHANNELS.map((channel) => (
+              <button
+                key={channel}
+                ref={activeChannel === channel ? activeTabRef : null}
+                onMouseUp={(e) => handleChannelClick(channel, e)}
+                className={`pb-3 pt-1 text-[10px] font-black uppercase tracking-[0.12em] transition-all relative shrink-0 outline-none ${
+                  activeChannel === channel ? 'text-[#D0F870]' : 'text-white/80 hover:text-white'
+                }`}
+              >
+                {channelMap[channel]?.[language] || channel}
+                {activeChannel === channel && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#D0F870] rounded-full shadow-[0_0_12px_rgba(208,248,112,0.8)]" />
+                )}
+              </button>
+            ))}
+            <div className="w-8 shrink-0" />
+          </div>
+        </div>
+
+        {/* Grid Content */}
         {loading ? (
           <div className="flex gap-4 p-4 pointer-events-none">
              <div className="w-1/2 flex flex-col">

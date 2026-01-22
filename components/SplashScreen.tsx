@@ -62,7 +62,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
              {/* Logo is now static (rotation removed) */}
              <div className="w-40 h-40 relative" style={{ transformStyle: 'preserve-3d' }}>
                 <img 
-                  src="https://cdn.meshy.ai/ti_w:128,q:75,f:webp/webapp-build-assets/production/_next/static/media/mushroom-filled-24@3.197e3724.png" 
+                  src="https://avatars.githubusercontent.com/u/160386200?s=280&v=4" 
                   className="w-full h-full object-contain filter drop-shadow-[0_0_20px_rgba(208,248,112,0.6)] brightness-[1.1]" 
                   alt="Meshy AI Logo" 
                 />

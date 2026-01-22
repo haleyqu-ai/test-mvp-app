@@ -240,7 +240,7 @@ const Create: React.FC<CreateProps> = ({
                       <ImageIcon size={32} />
                     </div>
                     <div className="text-center">
-                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Neural Source Required</p>
+                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white">image required</p>
                     </div>
                     <div className="grid grid-cols-2 w-full gap-3 mt-1">
                        <button 

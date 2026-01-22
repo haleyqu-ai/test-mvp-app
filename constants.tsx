@@ -5,7 +5,11 @@ export const EXPLORE_CHANNELS = [
   'Featured', 'Trending', '3D Print', 'Fantasy', 'Kids', 'Character', 'Detailed', 'Most Downloads'
 ];
 
-export const MESH_CREDIT_ICON = "https://cdn.meshy.ai/ti_w:64,q:75,f:webp/webapp-build-assets/production/_next/static/media/mushroom-filled-24@3.197e3724.png";
+// The yellow credit icon requested by the user (Yellow background with black lightning bolt)
+export const MESH_CREDIT_ICON = "data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100' height='100' rx='32' fill='%23FBBF24'/%3E%3Cpath d='M58 18L32 56H48L42 82L68 44H52L58 18Z' fill='black'/%3E%3C/svg%3E";
+
+// The brand logo asset
+export const MESHY_BRAND_LOGO = "https://avatars.githubusercontent.com/u/160386200?s=280&v=4";
 
 const DRAGON_GLB = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DragonAttenuation/glTF-Binary/DragonAttenuation.glb";
 
@@ -81,8 +85,14 @@ export const ASSETS_MODELS: Model[] = [
 ];
 
 export const ASSETS_IMAGES = [
-  { id: 'i1', url: "https://picsum.photos/seed/tex1/400/400", title: 'Texture Sample 01' },
-  { id: 'i2', url: "https://picsum.photos/seed/tex2/400/400", title: 'Height Map Alpha' },
+  { id: 'i1', url: "https://picsum.photos/seed/tex1/400/400", title: 'Texture Sample 01', createdAt: 'Mar 24, 2024' },
+  { id: 'i2', url: "https://picsum.photos/seed/tex2/400/400", title: 'Height Map Alpha', createdAt: 'Mar 24, 2024' },
+  { id: 'i3', url: "https://picsum.photos/seed/tex3/400/400", title: 'Neural Surface Map', createdAt: 'Mar 23, 2024' },
+  { id: 'i4', url: "https://picsum.photos/seed/tex4/400/400", title: 'Obsidian PBR', createdAt: 'Mar 23, 2024' },
+  { id: 'i5', url: "https://picsum.photos/seed/tex5/400/400", title: 'Cybernetic Hull', createdAt: 'Mar 22, 2024' },
+  { id: 'i6', url: "https://picsum.photos/seed/tex6/400/400", title: 'Ancient Rune', createdAt: 'Mar 22, 2024' },
+  { id: 'i7', url: "https://picsum.photos/seed/tex7/400/400", title: 'Magma Flow', createdAt: 'Mar 21, 2024' },
+  { id: 'i8', url: "https://picsum.photos/seed/tex8/400/400", title: 'Frost Crystal', createdAt: 'Mar 21, 2024' },
 ];
 
 export const EXPORTED_FILES = [

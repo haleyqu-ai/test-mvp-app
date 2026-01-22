@@ -11,7 +11,7 @@ interface AssetsProps {
   userTier: UserTier;
   onGenerate3D: (url: string) => void;
   onEditImage: (url: string) => void;
-  onImageClick: (url: string, title: string) => void;
+  onImageClick: (url: string, title: string, collection: {url: string; title: string; createdAt: string}[]) => void;
   onNavigateToCreate: (mode?: 'image3d' | 'genImage') => void;
   onOpenFile: (name: string) => void;
   language: 'en' | 'zh';
@@ -209,7 +209,7 @@ const Assets: React.FC<AssetsProps> = ({
               {ASSETS_IMAGES.map((img) => (
                 <div 
                   key={img.id}
-                  onClick={() => onImageClick(img.url, img.title)}
+                  onClick={() => onImageClick(img.url, img.title, ASSETS_IMAGES)}
                   className="bg-neutral-900/60 rounded-[32px] overflow-hidden border border-white/5 group active:scale-[0.98] transition-all cursor-pointer"
                 >
                   <div className="aspect-square overflow-hidden">
@@ -220,7 +220,11 @@ const Assets: React.FC<AssetsProps> = ({
                     />
                   </div>
                   <div className="p-3.5">
-                    <h3 className="text-[10px] font-black uppercase text-white/80 truncate">{img.title}</h3>
+                    <h3 className="text-[10px] font-black uppercase text-white/80 truncate mb-1">{img.title}</h3>
+                    <div className="flex items-center gap-2 text-neutral-500 mt-1.5">
+                       <Clock size={11} className="shrink-0" />
+                       <span className="text-[9px] font-black uppercase tracking-widest">{img.createdAt}</span>
+                    </div>
                   </div>
                 </div>
               ))}

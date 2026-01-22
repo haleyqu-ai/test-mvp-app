@@ -13,7 +13,8 @@ import PrintPage from './components/PrintPage';
 import LoginModal from './components/LoginModal';
 import SplashScreen from './components/SplashScreen';
 import MockOpenWith from './components/MockOpenWith';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Star, Crown, Zap } from 'lucide-react';
+import { MESH_CREDIT_ICON } from './constants';
 
 const App: React.FC = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -21,7 +22,7 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<'en' | 'zh'>('en');
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [isWorkspaceMode, setIsWorkspaceMode] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<{ url: string; title: string } | null>(null);
+  const [selectedImageContext, setSelectedImageContext] = useState<{ images: {url: string; title: string}[]; index: number } | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userTier, setUserTier] = useState<UserTier>('free');
   const [credits, setCredits] = useState(150);
@@ -34,7 +35,12 @@ const App: React.FC = () => {
   const [shouldScrollToTasks, setShouldScrollToTasks] = useState(false);
   const [openWithFile, setOpenWithFile] = useState<string | null>(null);
 
-  // Lifted Tasks State - Cleaned up to ensure only one task can be started in prototype
+  // Payment Management State
+  const [isPaying, setIsPaying] = useState(false);
+  const [paymentStep, setPaymentStep] = useState<'confirm' | 'processing'>('confirm');
+  const [paymentMeta, setPaymentMeta] = useState({ amount: 0, price: '', tier: 'pro' as UserTier | 'credits' });
+
+  // Lifted Tasks State
   const [tasks, setTasks] = useState<GenerationTask[]>([
     { id: 't-completed-model', type: 'Model', status: 'completed', progress: 100, thumbnail: 'https://picsum.photos/seed/panda1/200/200', title: 'Ancient Panda', createdAt: 'Mar 24, 10:45 AM' },
     { id: 't-completed-image', type: 'Image', status: 'completed', progress: 100, thumbnail: 'https://picsum.photos/seed/fantasy_i-done/200/200', title: 'Mythic Citadel', createdAt: 'Mar 24, 09:30 AM' },
@@ -59,7 +65,6 @@ const App: React.FC = () => {
   };
 
   const handleRemix = (model: Model) => {
-    // Guest allowed to remix (navigate to create with reference)
     setSelectedModel(null);
     setCreateInitialMode('image3d');
     setReferenceImage(model.thumbnail);
@@ -67,14 +72,14 @@ const App: React.FC = () => {
   };
 
   const handleGenerate3D = (url: string) => {
-    setSelectedImage(null);
+    setSelectedImageContext(null);
     setCreateInitialMode('image3d');
     setReferenceImage(url);
     setActiveTab(NavTab.CREATE);
   };
 
   const handleEditImage = (url: string) => {
-    setSelectedImage(null);
+    setSelectedImageContext(null);
     setCreateInitialMode('genImage');
     setReferenceImage(url);
     setActiveTab(NavTab.CREATE);
@@ -136,100 +141,119 @@ const App: React.FC = () => {
     setShouldScrollToTasks(true);
   };
 
-  const renderContent = () => {
-    if (activeTab === NavTab.SUBSCRIBE && tempSubscribeClose) {
-      return null;
-    }
-
-    switch (activeTab) {
-      case NavTab.EXPLORE:
-        return <Explore onModelClick={(m) => handleOpenModel(m, false)} language={language} />;
-      case NavTab.ASSETS:
-        return (
-          <Assets 
-            isLoggedIn={isLoggedIn}
-            onLoginTrigger={handleLoginTrigger}
-            onModelClick={(m) => handleOpenModel(m, true)} 
-            userTier={userTier}
-            onGenerate3D={handleGenerate3D}
-            onEditImage={handleEditImage}
-            onImageClick={(url, title) => setSelectedImage({ url, title })}
-            onNavigateToCreate={(mode) => {
-              if (mode) setCreateInitialMode(mode);
-              setReferenceImage(null);
-              handleTabChange(NavTab.CREATE);
-            }}
-            onOpenFile={setOpenWithFile}
-            language={language}
-          />
-        );
-      case NavTab.CREATE:
-        return (
-          <Create 
-            isLoggedIn={isLoggedIn}
-            userTier={userTier}
-            credits={credits} 
-            setCredits={setCredits} 
-            onLoginTrigger={handleLoginTrigger}
-            onTaskModelClick={(m) => handleOpenModel(m, true)}
-            onTaskImageClick={(url, title) => setSelectedImage({ url, title })}
-            onUpgradeTrigger={handleUpgradeTrigger}
-            initialMode={createInitialMode} 
-            initialRefImage={referenceImage}
-            language={language}
-            tasks={tasks}
-            setTasks={setTasks}
-            shouldScrollToTasks={shouldScrollToTasks}
-            onScrollComplete={() => setShouldScrollToTasks(false)}
-          />
-        );
-      case NavTab.SUBSCRIBE:
-        return (
-          <Subscription 
-            isLoggedIn={isLoggedIn}
-            userTier={userTier} 
-            onSubscribeSuccess={(tier) => {
-              setUserTier(tier);
-              setCredits(prev => prev + (tier === 'pro' ? 1000 : 4000));
-              setShowSuccessModal(true);
-            }} 
-            credits={credits}
-            setCredits={setCredits}
-            showCloseButton={false}
-            onLoginTrigger={handleLoginTrigger}
-            language={language}
-          />
-        );
-      case NavTab.ME:
-        return (
-          <Me 
-            isLoggedIn={isLoggedIn} 
-            userTier={userTier} 
-            credits={credits} 
-            onLoginClick={handleLoginTrigger}
-            onLogout={handleLogout}
-            onUpgradeTrigger={handleUpgradeTrigger}
-            language={language}
-            onLanguageChange={setLanguage}
-          />
-        );
-      default:
-        return null;
-    }
+  const handleStartPayment = (meta: { amount: number; price: string; tier: UserTier | 'credits' }) => {
+    setPaymentMeta(meta);
+    setPaymentStep('confirm');
+    setIsPaying(true);
+    
+    setTimeout(() => {
+      setPaymentStep('processing');
+      setTimeout(() => {
+        if (meta.tier === 'credits') {
+          setCredits(prev => prev + meta.amount);
+        } else {
+          setUserTier(meta.tier);
+          setCredits(prev => prev + (meta.tier === 'pro' ? 1000 : 4000));
+        }
+        setIsPaying(false);
+        setShowSuccessModal(true);
+      }, 2500);
+    }, 1500);
   };
 
   const t = {
     en: {
-      successTitle: 'Transmission Sync',
-      successText: 'Operation successful. Credits added or subscription updated.',
-      confirm: 'Confirm Protocol'
+      successTitle: 'Payment completed',
+      successText: 'Credits added and advanced features unlocked.',
+      confirm: 'Okay',
+      creditTopup: 'Meshy AI Credit Top-up',
+      confirmPay: 'DOUBLE CLICK TO PAY',
+      syncing: 'SYNCING TRANSACTION'
     },
     zh: {
-      successTitle: '传输同步完成',
-      successText: '操作成功。积分已入账或订阅已更新。',
-      confirm: '确认协议'
+      successTitle: '支付完成',
+      successText: '积分已入账，高级功能已解锁。',
+      confirm: '好的',
+      creditTopup: 'Meshy AI 积分充值',
+      confirmPay: '双击侧边按钮支付',
+      syncing: '交易同步中'
     }
   }[language];
+
+  // Hide Nav when either Model or Image viewer is open
+  const isAnyViewerOpen = selectedModel !== null || selectedImageContext !== null || isViewerLoading;
+
+  const renderPaymentOverlay = () => {
+    if (!isPaying) return null;
+    const isTopup = paymentMeta.tier === 'credits';
+    const displayTitle = isTopup ? t.creditTopup : `Meshy AI ${paymentMeta.tier.toUpperCase()}`;
+    
+    return (
+      <div className="fixed inset-0 z-[600] bg-black/85 backdrop-blur-2xl flex items-end px-4 pb-40 pointer-events-auto animate-in fade-in duration-300">
+         <div className="w-full max-w-[400px] mx-auto bg-[#0F0F0F] rounded-[32px] overflow-hidden animate-slide-up flex flex-col items-center shadow-[0_50px_100px_rgba(0,0,0,0.8)] border border-white/5 outline-none select-none">
+            <div className="pt-4 pb-6 w-full flex justify-center">
+              <div className="w-10 h-1.5 bg-neutral-800 rounded-full" />
+            </div>
+            
+            <div className="flex flex-col items-center gap-6 px-8 pb-8 w-full">
+              <div className={`w-20 h-20 rounded-[24px] flex items-center justify-center shadow-2xl relative ${
+                paymentMeta.tier === 'studio' ? 'bg-[#C084FC]' : 
+                paymentMeta.tier === 'pro' ? 'bg-[#D0F870]' :
+                'bg-orange-400'
+              }`}>
+                {/* Restore logic to use Tier Icons for subscriptions and MESH_CREDIT_ICON for topups */}
+                {isTopup ? (
+                   <img 
+                    src={MESH_CREDIT_ICON} 
+                    className="w-12 h-12 object-contain filter drop-shadow-[0_0_10px_rgba(0,0,0,0.4)]"
+                    alt=""
+                  />
+                ) : (
+                  paymentMeta.tier === 'studio' ? <Star size={40} className="text-black" /> : <Crown size={40} className="text-black" />
+                )}
+                <div className="absolute inset-0 rounded-[24px] shadow-[inset_0_2px_10px_rgba(255,255,255,0.3)] pointer-events-none" />
+              </div>
+
+              <div className="text-center space-y-1">
+                <h3 className="text-xl font-bold text-white tracking-tight leading-none">{displayTitle}</h3>
+                <p className="text-neutral-500 text-[14px] font-bold mt-1">
+                  {paymentMeta.price}
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full px-8">
+               <div className="w-full h-[0.5px] bg-white/5" />
+            </div>
+
+            <div className="w-full p-8 min-h-[140px] flex flex-col justify-center items-center border-none outline-none">
+               {paymentStep === 'confirm' ? (
+                 <div className="w-full flex justify-between items-center bg-neutral-900/30 rounded-2xl px-6 py-5 animate-in fade-in zoom-in-95 duration-300 border border-white/5">
+                    <span className="text-[11px] font-black uppercase tracking-[0.05em] text-neutral-500">
+                      {t.confirmPay}
+                    </span>
+                    <div className="w-9 h-9 flex items-center justify-center relative">
+                      <div className="w-7 h-7 border-[2.5px] border-[#007AFF] rounded-lg shadow-[0_0_10px_rgba(0,122,255,0.2)]" />
+                    </div>
+                 </div>
+               ) : (
+                 <div className="flex flex-col items-center gap-6 animate-in fade-in zoom-in-95 duration-500 border-none outline-none">
+                    <div className="relative w-12 h-12 flex items-center justify-center border-none outline-none">
+                      <div 
+                        className="w-full h-full border-[4px] border-transparent border-t-[#007AFF] border-r-[#007AFF] rounded-full animate-spin" 
+                        style={{ animationDuration: '0.8s' }}
+                      />
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-500 animate-pulse">
+                      {t.syncing}
+                    </p>
+                 </div>
+               )}
+            </div>
+         </div>
+      </div>
+    );
+  };
 
   return (
     <div className="flex items-center justify-center bg-[#E6E8E3] min-h-screen">
@@ -251,8 +275,105 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <Layout activeTab={activeTab} onTabChange={handleTabChange} language={language} hideNav={isViewerLoading}>
-          {renderContent()}
+        <Layout activeTab={activeTab} onTabChange={handleTabChange} language={language} hideNav={isAnyViewerOpen}>
+          {/* Main content container with persistent tabs */}
+          <div className="relative h-full w-full overflow-hidden">
+            {/* Explore Tab */}
+            <div className={`absolute inset-0 ${activeTab === NavTab.EXPLORE ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
+              <Explore 
+                onModelClick={(m) => handleOpenModel(m, false)} 
+                onNavigateToCreate={(mode) => {
+                  setCreateInitialMode(mode);
+                  setReferenceImage(null);
+                  handleTabChange(NavTab.CREATE);
+                }}
+                language={language} 
+              />
+            </div>
+
+            {/* Assets Tab */}
+            <div className={`absolute inset-0 ${activeTab === NavTab.ASSETS ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
+              <Assets 
+                isLoggedIn={isLoggedIn}
+                onLoginTrigger={handleLoginTrigger}
+                onModelClick={(m) => handleOpenModel(m, true)} 
+                userTier={userTier}
+                onGenerate3D={handleGenerate3D}
+                onEditImage={handleEditImage}
+                onImageClick={(url, title, collection) => {
+                  const idx = collection.findIndex(item => item.url === url);
+                  setSelectedImageContext({ images: collection, index: idx });
+                }}
+                onNavigateToCreate={(mode) => {
+                  if (mode) setCreateInitialMode(mode);
+                  setReferenceImage(null);
+                  handleTabChange(NavTab.CREATE);
+                }}
+                onOpenFile={setOpenWithFile}
+                language={language}
+              />
+            </div>
+
+            {/* Create Tab */}
+            <div className={`absolute inset-0 ${activeTab === NavTab.CREATE ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
+              <Create 
+                isLoggedIn={isLoggedIn}
+                userTier={userTier}
+                credits={credits} 
+                setCredits={setCredits} 
+                onLoginTrigger={handleLoginTrigger}
+                onTaskModelClick={(m) => handleOpenModel(m, true)}
+                onTaskImageClick={(url, title) => {
+                  const imgTasks = tasks
+                    .filter(t => t.type === 'Image' && t.status === 'completed')
+                    .map(t => ({ url: t.thumbnail, title: t.title }));
+                  const idx = imgTasks.findIndex(item => item.url === url);
+                  setSelectedImageContext({ images: imgTasks, index: idx });
+                }}
+                onUpgradeTrigger={handleUpgradeTrigger}
+                initialMode={createInitialMode} 
+                initialRefImage={referenceImage}
+                language={language}
+                tasks={tasks}
+                setTasks={setTasks}
+                shouldScrollToTasks={shouldScrollToTasks}
+                onScrollComplete={() => setShouldScrollToTasks(false)}
+              />
+            </div>
+
+            {/* Subscribe Tab - Explicitly z-10 so Layout's nav (z-50) stays on top */}
+            <div className={`absolute inset-0 ${activeTab === NavTab.SUBSCRIBE && !tempSubscribeClose ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
+              <Subscription 
+                isLoggedIn={isLoggedIn}
+                userTier={userTier} 
+                onSubscribeSuccess={(tier) => {
+                  setUserTier(tier);
+                  setCredits(prev => prev + (tier === 'pro' ? 1000 : 4000));
+                  setShowSuccessModal(true);
+                }} 
+                credits={credits}
+                setCredits={setCredits}
+                showCloseButton={false}
+                onLoginTrigger={handleLoginTrigger}
+                language={language}
+                onStartPayment={handleStartPayment}
+              />
+            </div>
+
+            {/* Me Tab */}
+            <div className={`absolute inset-0 ${activeTab === NavTab.ME ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
+              <Me 
+                isLoggedIn={isLoggedIn} 
+                userTier={userTier} 
+                credits={credits} 
+                onLoginClick={handleLoginTrigger}
+                onLogout={handleLogout}
+                onUpgradeTrigger={handleUpgradeTrigger}
+                language={language}
+                onLanguageChange={setLanguage}
+              />
+            </div>
+          </div>
         </Layout>
 
         {selectedModel && (
@@ -281,6 +402,7 @@ const App: React.FC = () => {
           />
         )}
 
+        {/* Temporary Subscription Overlay (from other tabs) */}
         {activeTab === NavTab.SUBSCRIBE && tempSubscribeClose && (
           <div className="absolute inset-0 z-[350] bg-black animate-in slide-in-from-bottom duration-500">
             <Subscription 
@@ -300,14 +422,16 @@ const App: React.FC = () => {
               }}
               onLoginTrigger={handleLoginTrigger}
               language={language}
+              onStartPayment={handleStartPayment}
             />
           </div>
         )}
 
-        {selectedImage && (
+        {selectedImageContext && (
           <ImageViewer 
-            image={selectedImage}
-            onClose={() => setSelectedImage(null)}
+            images={selectedImageContext.images}
+            initialIndex={selectedImageContext.index}
+            onClose={() => setSelectedImageContext(null)}
             onGenerate3D={handleGenerate3D}
             onEditImage={handleEditImage}
             language={language}
@@ -340,6 +464,8 @@ const App: React.FC = () => {
         )}
 
         <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-32 h-1 bg-neutral-700/60 rounded-full z-[100]"></div>
+
+        {renderPaymentOverlay()}
 
         {showSuccessModal && (
           <div className="absolute inset-0 z-[400] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">

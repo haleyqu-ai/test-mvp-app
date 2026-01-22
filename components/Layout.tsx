@@ -68,7 +68,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, langu
                   />
                 </div>
                 <span className={`text-[8px] font-black uppercase tracking-[0.2em] mt-2 transition-all duration-300 ${
-                  isActive ? 'text-[#D0F870] opacity-100' : 'text-neutral-500 opacity-60'
+                  isActive ? 'text-[#D0F870] opacity-100' : 'text-white/80'
                 }`}>
                   {tab.label}
                 </span>
@@ -84,13 +84,13 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, langu
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               className={`flex flex-col items-center gap-1.5 transition-all duration-300 pb-2 ${
-                isActive ? 'text-[#D0F870] scale-110' : 'text-white/60 hover:text-white'
+                isActive ? 'text-[#D0F870] scale-110' : 'text-white/90 hover:text-white'
               }`}
             >
               <div className={`relative ${isActive ? 'drop-shadow-[0_0_8px_rgba(208,248,112,0.4)]' : ''}`}>
                 <Icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
               </div>
-              <span className={`text-[7px] font-black uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-60'}`}>
+              <span className={`text-[7px] font-black uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-90'}`}>
                 {tab.label}
               </span>
             </button>
