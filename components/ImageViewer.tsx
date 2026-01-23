@@ -74,13 +74,13 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ images, initialIndex, onClose
 
   const t = {
     en: {
-      neuralMatrix: 'Neural Visual Matrix',
-      generate3D: 'GENERATE 3D MESH',
-      edit: 'EDIT IMAGE',
-      download: 'DOWNLOAD'
+      matrix: 'Visual Matrix',
+      generate3D: 'Generate 3D Model',
+      edit: 'Edit Image',
+      download: 'Download'
     },
     zh: {
-      neuralMatrix: '神经视觉矩阵',
+      matrix: '视觉矩阵',
       generate3D: '制作 3D 模型',
       edit: '编辑图片',
       download: '保存到本地'
@@ -89,11 +89,11 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ images, initialIndex, onClose
 
   return (
     <div className="absolute inset-0 z-[500] bg-black flex flex-col animate-in fade-in duration-300 overflow-hidden">
-      {/* Header with Share Button Removed */}
+      {/* Header */}
       <header className="px-6 pt-12 pb-8 flex justify-between items-center z-50">
         <div className="flex flex-col">
-          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white truncate max-w-[150px]">{currentImage.title}</h3>
-          <p className="text-[8px] font-bold text-neutral-600 uppercase tracking-widest mt-1">{t.neuralMatrix}</p>
+          <h3 className="text-xs font-bold text-white truncate max-w-[150px]">{currentImage.title}</h3>
+          <p className="text-[8px] font-bold text-neutral-600 uppercase tracking-widest mt-1">{t.matrix}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="bg-neutral-900/80 px-4 py-2 rounded-full border border-white/5 text-[10px] font-black text-neutral-400 tabular-nums">
@@ -156,11 +156,11 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ images, initialIndex, onClose
         </div>
       </div>
 
-      {/* Footer Buttons aligned with Screenshot */}
+      {/* Footer Buttons */}
       <div className="px-8 pb-16 space-y-4 relative z-10">
         <button 
           onClick={() => onGenerate3D(currentImage.url)}
-          className="w-full h-[72px] bg-[#D0F870] rounded-[30px] font-black text-xs uppercase tracking-[0.2em] text-black flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(208,248,112,0.2)] active:scale-[0.98] transition-all"
+          className="w-full h-[72px] bg-gradient-to-r from-[#D0F870] via-[#FBBAC1] to-[#F9A8D4] rounded-[30px] font-bold text-lg text-black flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(0,0,0,0.4)] active:scale-[0.98] transition-all"
         >
           <Sparkles size={20} className="text-black" /> {t.generate3D}
         </button>
@@ -168,11 +168,11 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ images, initialIndex, onClose
         <div className="grid grid-cols-2 gap-4">
            <button 
              onClick={() => onEditImage(currentImage.url)} 
-             className="h-[64px] bg-neutral-900 border border-white/5 rounded-[28px] font-black text-[10px] uppercase tracking-[0.2em] text-white flex items-center justify-center gap-2.5 active:scale-[0.97] transition-all"
+             className="h-[64px] bg-neutral-900 border border-white/5 rounded-[28px] font-bold text-[11px] text-white flex items-center justify-center gap-2.5 active:scale-[0.97] transition-all"
            >
              <Edit2 size={16} className="text-neutral-400" /> {t.edit}
            </button>
-           <button className="h-[64px] bg-neutral-900 border border-white/5 rounded-[28px] font-black text-[10px] uppercase tracking-[0.2em] text-white flex items-center justify-center gap-2.5 active:scale-[0.97] transition-all">
+           <button className="h-[64px] bg-neutral-900 border border-white/5 rounded-[28px] font-bold text-[11px] text-white flex items-center justify-center gap-2.5 active:scale-[0.97] transition-all">
              <Download size={16} className="text-neutral-400" /> {t.download}
            </button>
         </div>

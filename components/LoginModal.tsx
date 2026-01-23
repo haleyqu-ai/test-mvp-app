@@ -20,7 +20,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess, langua
   const t = {
     en: {
       welcome: 'Welcome to Meshy',
-      promo: 'Sign up to get 100 credits for free!',
+      promo: 'Sign up to get 150 credits for free!',
       google: 'Sign in with Google',
       apple: 'Sign in with Apple',
       email: 'Sign in with Email',
@@ -30,11 +30,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess, langua
       verifyCode: 'Verify Code',
       codeSent: 'Code sent to',
       resend: 'Resend Code',
-      placeholder: 'neural@meshy.ai'
+      placeholder: 'hello@meshy.ai'
     },
     zh: {
       welcome: '欢迎来到 Meshy',
-      promo: '注册即可免费领取 100 积分！',
+      promo: '注册即可免费领取 150 积分！',
       google: '使用 Google 登录',
       apple: '使用 Apple 登录',
       email: '使用邮箱登录',
@@ -44,7 +44,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess, langua
       verifyCode: '验证码',
       codeSent: '验证码已发送至',
       resend: '重新发送',
-      placeholder: 'neural@meshy.ai'
+      placeholder: 'hello@meshy.ai'
     }
   }[language];
 
@@ -206,7 +206,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess, langua
               {code.map((digit, i) => (
                 <input
                   key={i}
-                  ref={(el) => (inputRefs.current[i] = el)}
+                  ref={(el) => { inputRefs.current[i] = el; }}
                   type="number"
                   inputMode="numeric"
                   value={digit}

@@ -88,7 +88,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           <div className="flex items-center justify-center gap-4">
              <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-[#D0F87040]" />
              <p className="text-[#D0F870] text-[11px] font-black uppercase tracking-[0.5em] opacity-90 animate-pulse">
-                UNLEASH 3D CREATION
+                PROD 1 RELEASE
              </p>
              <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-[#D0F87040]" />
           </div>

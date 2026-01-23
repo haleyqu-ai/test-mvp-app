@@ -14,7 +14,7 @@ import LoginModal from './components/LoginModal';
 import SplashScreen from './components/SplashScreen';
 import MockOpenWith from './components/MockOpenWith';
 import { CheckCircle2, Star, Crown, Zap } from 'lucide-react';
-import { MESH_CREDIT_ICON } from './constants';
+import { MESH_CREDIT_ICON, MESHY_BRAND_LOGO } from './constants';
 
 const App: React.FC = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -180,6 +180,15 @@ const App: React.FC = () => {
     }
   }[language];
 
+  // Map NavTab to English Page Name for reference (removed from UI label)
+  const pageNames: Record<NavTab, string> = {
+    [NavTab.EXPLORE]: 'EXPLORE',
+    [NavTab.ASSETS]: 'ASSETS',
+    [NavTab.CREATE]: 'CREATE',
+    [NavTab.SUBSCRIBE]: 'SUBSCRIBE',
+    [NavTab.ME]: 'ME'
+  };
+
   // Hide Nav when either Model or Image viewer is open
   const isAnyViewerOpen = selectedModel !== null || selectedImageContext !== null || isViewerLoading;
 
@@ -201,7 +210,6 @@ const App: React.FC = () => {
                 paymentMeta.tier === 'pro' ? 'bg-[#D0F870]' :
                 'bg-orange-400'
               }`}>
-                {/* Restore logic to use Tier Icons for subscriptions and MESH_CREDIT_ICON for topups */}
                 {isTopup ? (
                    <img 
                     src={MESH_CREDIT_ICON} 
@@ -209,7 +217,11 @@ const App: React.FC = () => {
                     alt=""
                   />
                 ) : (
-                  paymentMeta.tier === 'studio' ? <Star size={40} className="text-black" /> : <Crown size={40} className="text-black" />
+                   <img 
+                    src={MESHY_BRAND_LOGO} 
+                    className="w-14 h-14 object-contain filter drop-shadow(0px 0px 10px rgba(0,0,0,0.4))"
+                    alt=""
+                  />
                 )}
                 <div className="absolute inset-0 rounded-[24px] shadow-[inset_0_2px_10px_rgba(255,255,255,0.3)] pointer-events-none" />
               </div>
@@ -256,93 +268,185 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center bg-[#E6E8E3] min-h-screen">
-      <div className="w-[387px] h-[839px] bg-meshy-dark border-[8px] border-neutral-900 rounded-[58px] relative overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.3)] flex flex-col">
-        {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+    <div className="flex items-center justify-center bg-[#f0f1ed] min-h-screen">
+      {/* Simulation iPhone Outer Frame */}
+      <div className="relative p-[11px] bg-gradient-to-b from-[#b8b8b3] via-[#dcdcdc] to-[#a0a09a] rounded-[64px] shadow-[0_80px_160px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.8),inset_0_-2px_4px_rgba(0,0,0,0.4)]">
+        
+        {/* Antenna Lines */}
+        <div className="absolute top-20 left-0 w-full h-[2px] bg-black/10 pointer-events-none" />
+        <div className="absolute bottom-20 left-0 w-full h-[2px] bg-black/10 pointer-events-none" />
 
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 w-28 h-8 bg-black rounded-3xl z-[60] flex items-center justify-center">
-           <div className="w-1.5 h-1.5 bg-zinc-800 rounded-full ml-auto mr-3" />
-        </div>
+        {/* Buttons (Left Side) */}
+        <div className="absolute left-[-2px] top-32 w-[3px] h-9 bg-gradient-to-b from-[#a0a09a] to-[#dcdcdc] rounded-l-sm shadow-[-2px_0_4px_rgba(0,0,0,0.1)] border-l border-white/20" /> {/* Action Button */}
+        <div className="absolute left-[-2px] top-48 w-[3px] h-16 bg-gradient-to-b from-[#a0a09a] to-[#dcdcdc] rounded-l-sm shadow-[-2px_0_4px_rgba(0,0,0,0.1)] border-l border-white/20" /> {/* Volume Up */}
+        <div className="absolute left-[-2px] top-[260px] w-[3px] h-16 bg-gradient-to-b from-[#a0a09a] to-[#dcdcdc] rounded-l-sm shadow-[-2px_0_4px_rgba(0,0,0,0.1)] border-l border-white/20" /> {/* Volume Down */}
 
-        <div className="h-12 w-full flex items-end justify-between px-10 pb-2 text-white font-black text-[10px] z-[55] pointer-events-none tracking-tight">
-          <span>9:41</span>
-          <div className="flex gap-1.5 items-center">
-            <div className="w-3.5 h-2 bg-white/40 rounded-sm" />
-            <div className="w-3.5 h-2 bg-white/40 rounded-sm" />
-            <div className="w-5 h-2.5 border border-white/40 rounded-[3px] p-0.5 relative">
-               <div className="bg-white h-full w-[80%] rounded-[1px]" />
+        {/* Button (Right Side) */}
+        <div className="absolute right-[-2px] top-56 w-[3px] h-24 bg-gradient-to-b from-[#a0a09a] to-[#dcdcdc] rounded-r-sm shadow-[2px_0_4px_rgba(0,0,0,0.1)] border-r border-white/20" /> {/* Power Button */}
+
+        {/* Main Phone Body */}
+        <div className="w-[387px] h-[839px] bg-meshy-dark border-[12px] border-black rounded-[54px] relative overflow-hidden shadow-[inset_0_0_2px_rgba(255,255,255,0.2)] flex flex-col">
+          
+          {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+
+          {/* Dynamic Island */}
+          <div className="absolute top-[11px] left-1/2 -translate-x-1/2 w-[120px] h-[34px] bg-black rounded-[20px] z-[70] flex items-center justify-end px-4 gap-2 border-[1.5px] border-white/5">
+             <div className="w-2.5 h-2.5 bg-neutral-900 rounded-full flex items-center justify-center overflow-hidden border border-white/5">
+               <div className="w-1 h-1 bg-blue-500/20 blur-[1px] rounded-full" />
+             </div>
+             <div className="w-3.5 h-3.5 bg-neutral-900 rounded-full flex items-center justify-center overflow-hidden border border-white/5">
+               <div className="w-2 h-2 bg-indigo-500/30 blur-[2px] rounded-full" />
+             </div>
+          </div>
+
+          <div className="h-12 w-full flex items-end justify-between px-10 pb-2 text-white font-black text-[10px] z-[55] pointer-events-none tracking-tight">
+            <span>9:41</span>
+            <div className="flex gap-1.5 items-center">
+              <div className="flex gap-0.5 items-end h-2.5">
+                <div className="w-[3px] h-[40%] bg-white rounded-full" />
+                <div className="w-[3px] h-[60%] bg-white rounded-full" />
+                <div className="w-[3px] h-[80%] bg-white rounded-full" />
+                <div className="w-[3px] h-[100%] bg-white rounded-full" />
+              </div>
+              <span className="text-[9px] uppercase font-bold tracking-tighter">5G</span>
+              <div className="w-6 h-3 border-[1.5px] border-white/40 rounded-[4px] p-0.5 relative">
+                 <div className="bg-white h-full w-[85%] rounded-[1.5px]" />
+                 <div className="absolute right-[-3px] top-1/2 -translate-y-1/2 w-1 h-1.5 bg-white/40 rounded-r-full" />
+              </div>
             </div>
           </div>
-        </div>
 
-        <Layout activeTab={activeTab} onTabChange={handleTabChange} language={language} hideNav={isAnyViewerOpen}>
-          {/* Main content container with persistent tabs */}
-          <div className="relative h-full w-full overflow-hidden">
-            {/* Explore Tab */}
-            <div className={`absolute inset-0 ${activeTab === NavTab.EXPLORE ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
-              <Explore 
-                onModelClick={(m) => handleOpenModel(m, false)} 
-                onNavigateToCreate={(mode) => {
-                  setCreateInitialMode(mode);
-                  setReferenceImage(null);
-                  handleTabChange(NavTab.CREATE);
-                }}
-                language={language} 
-              />
+          <Layout 
+            activeTab={activeTab} 
+            onTabChange={handleTabChange} 
+            language={language} 
+            hideNav={isAnyViewerOpen}
+            isLoggedIn={isLoggedIn}
+            userTier={userTier}
+          >
+            <div className="relative h-full w-full overflow-hidden">
+              <div className={`absolute inset-0 ${activeTab === NavTab.EXPLORE ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
+                <Explore 
+                  onModelClick={(m) => handleOpenModel(m, false)} 
+                  onNavigateToCreate={(mode) => {
+                    setCreateInitialMode(mode);
+                    setReferenceImage(null);
+                    handleTabChange(NavTab.CREATE);
+                  }}
+                  language={language} 
+                />
+              </div>
+
+              <div className={`absolute inset-0 ${activeTab === NavTab.ASSETS ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
+                <Assets 
+                  isLoggedIn={isLoggedIn}
+                  onLoginTrigger={handleLoginTrigger}
+                  onModelClick={(m) => handleOpenModel(m, true)} 
+                  userTier={userTier}
+                  onGenerate3D={handleGenerate3D}
+                  onEditImage={handleEditImage}
+                  onImageClick={(url, title, collection) => {
+                    const idx = collection.findIndex(item => item.url === url);
+                    setSelectedImageContext({ images: collection, index: idx });
+                  }}
+                  onNavigateToCreate={(mode) => {
+                    if (mode) setCreateInitialMode(mode);
+                    setReferenceImage(null);
+                    handleTabChange(NavTab.CREATE);
+                  }}
+                  onOpenFile={setOpenWithFile}
+                  language={language}
+                  tasks={tasks}
+                />
+              </div>
+
+              <div className={`absolute inset-0 ${activeTab === NavTab.CREATE ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
+                <Create 
+                  isLoggedIn={isLoggedIn}
+                  userTier={userTier}
+                  credits={credits} 
+                  setCredits={setCredits} 
+                  onLoginTrigger={handleLoginTrigger}
+                  onTaskModelClick={(m) => handleOpenModel(m, true)}
+                  onTaskImageClick={(url, title) => {
+                    const imgTasks = tasks
+                      .filter(t => t.type === 'Image' && t.status === 'completed')
+                      .map(t => ({ url: t.thumbnail, title: t.title }));
+                    const idx = imgTasks.findIndex(item => item.url === url);
+                    setSelectedImageContext({ images: imgTasks, index: idx });
+                  }}
+                  onUpgradeTrigger={handleUpgradeTrigger}
+                  initialMode={createInitialMode} 
+                  initialRefImage={referenceImage}
+                  language={language}
+                  tasks={tasks}
+                  setTasks={setTasks}
+                  shouldScrollToTasks={shouldScrollToTasks}
+                  onScrollComplete={() => setShouldScrollToTasks(false)}
+                />
+              </div>
+
+              <div className={`absolute inset-0 ${activeTab === NavTab.SUBSCRIBE && !tempSubscribeClose ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
+                <Subscription 
+                  isLoggedIn={isLoggedIn}
+                  userTier={userTier} 
+                  onSubscribeSuccess={(tier) => {
+                    setUserTier(tier);
+                    setCredits(prev => prev + (tier === 'pro' ? 1000 : 4000));
+                    setShowSuccessModal(true);
+                  }} 
+                  credits={credits}
+                  setCredits={setCredits}
+                  showCloseButton={false}
+                  onLoginTrigger={handleLoginTrigger}
+                  language={language}
+                  onStartPayment={handleStartPayment}
+                />
+              </div>
+
+              <div className={`absolute inset-0 ${activeTab === NavTab.ME ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
+                <Me 
+                  isLoggedIn={isLoggedIn} 
+                  userTier={userTier} 
+                  credits={credits} 
+                  onLoginClick={handleLoginTrigger}
+                  onLogout={handleLogout}
+                  onUpgradeTrigger={handleUpgradeTrigger}
+                  language={language}
+                  onLanguageChange={setLanguage}
+                />
+              </div>
             </div>
+          </Layout>
 
-            {/* Assets Tab */}
-            <div className={`absolute inset-0 ${activeTab === NavTab.ASSETS ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
-              <Assets 
-                isLoggedIn={isLoggedIn}
-                onLoginTrigger={handleLoginTrigger}
-                onModelClick={(m) => handleOpenModel(m, true)} 
-                userTier={userTier}
-                onGenerate3D={handleGenerate3D}
-                onEditImage={handleEditImage}
-                onImageClick={(url, title, collection) => {
-                  const idx = collection.findIndex(item => item.url === url);
-                  setSelectedImageContext({ images: collection, index: idx });
-                }}
-                onNavigateToCreate={(mode) => {
-                  if (mode) setCreateInitialMode(mode);
-                  setReferenceImage(null);
-                  handleTabChange(NavTab.CREATE);
-                }}
-                onOpenFile={setOpenWithFile}
-                language={language}
-              />
-            </div>
+          {selectedModel && (
+            <ModelViewer 
+              model={selectedModel} 
+              isLoggedIn={isLoggedIn}
+              userTier={userTier}
+              isWorkspaceMode={isWorkspaceMode}
+              onClose={() => {
+                setSelectedModel(null);
+                setIsViewerLoading(false);
+              }}
+              onRemix={handleRemix}
+              onLoginTrigger={handleLoginTrigger}
+              onUpgradeTrigger={handleUpgradeTrigger}
+              onPrint={() => {
+                if (!isLoggedIn) { handleLoginTrigger(); return; }
+                setShowPrintPage(true);
+              }}
+              hasSeenHint={hasSeenViewerHint}
+              onHintShown={handleHintShown}
+              onLoadingChange={setIsViewerLoading}
+              onOpenFile={setOpenWithFile}
+              language={language}
+              onRetryTask={handleRetryModel}
+            />
+          )}
 
-            {/* Create Tab */}
-            <div className={`absolute inset-0 ${activeTab === NavTab.CREATE ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
-              <Create 
-                isLoggedIn={isLoggedIn}
-                userTier={userTier}
-                credits={credits} 
-                setCredits={setCredits} 
-                onLoginTrigger={handleLoginTrigger}
-                onTaskModelClick={(m) => handleOpenModel(m, true)}
-                onTaskImageClick={(url, title) => {
-                  const imgTasks = tasks
-                    .filter(t => t.type === 'Image' && t.status === 'completed')
-                    .map(t => ({ url: t.thumbnail, title: t.title }));
-                  const idx = imgTasks.findIndex(item => item.url === url);
-                  setSelectedImageContext({ images: imgTasks, index: idx });
-                }}
-                onUpgradeTrigger={handleUpgradeTrigger}
-                initialMode={createInitialMode} 
-                initialRefImage={referenceImage}
-                language={language}
-                tasks={tasks}
-                setTasks={setTasks}
-                shouldScrollToTasks={shouldScrollToTasks}
-                onScrollComplete={() => setShouldScrollToTasks(false)}
-              />
-            </div>
-
-            {/* Subscribe Tab - Explicitly z-10 so Layout's nav (z-50) stays on top */}
-            <div className={`absolute inset-0 ${activeTab === NavTab.SUBSCRIBE && !tempSubscribeClose ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
+          {activeTab === NavTab.SUBSCRIBE && tempSubscribeClose && (
+            <div className="absolute inset-0 z-[350] bg-black animate-in slide-in-from-bottom duration-500">
               <Subscription 
                 isLoggedIn={isLoggedIn}
                 userTier={userTier} 
@@ -353,138 +457,77 @@ const App: React.FC = () => {
                 }} 
                 credits={credits}
                 setCredits={setCredits}
-                showCloseButton={false}
+                showCloseButton={true}
+                onClose={() => {
+                  setActiveTab(previousTab);
+                  setTempSubscribeClose(false);
+                }}
                 onLoginTrigger={handleLoginTrigger}
                 language={language}
                 onStartPayment={handleStartPayment}
               />
             </div>
+          )}
 
-            {/* Me Tab */}
-            <div className={`absolute inset-0 ${activeTab === NavTab.ME ? 'z-10' : 'invisible pointer-events-none z-0'}`}>
-              <Me 
-                isLoggedIn={isLoggedIn} 
-                userTier={userTier} 
-                credits={credits} 
-                onLoginClick={handleLoginTrigger}
-                onLogout={handleLogout}
-                onUpgradeTrigger={handleUpgradeTrigger}
-                language={language}
-                onLanguageChange={setLanguage}
-              />
-            </div>
-          </div>
-        </Layout>
-
-        {selectedModel && (
-          <ModelViewer 
-            model={selectedModel} 
-            isLoggedIn={isLoggedIn}
-            userTier={userTier}
-            isWorkspaceMode={isWorkspaceMode}
-            onClose={() => {
-              setSelectedModel(null);
-              setIsViewerLoading(false);
-            }}
-            onRemix={handleRemix}
-            onLoginTrigger={handleLoginTrigger}
-            onUpgradeTrigger={handleUpgradeTrigger}
-            onPrint={() => {
-              if (!isLoggedIn) { handleLoginTrigger(); return; }
-              setShowPrintPage(true);
-            }}
-            hasSeenHint={hasSeenViewerHint}
-            onHintShown={handleHintShown}
-            onLoadingChange={setIsViewerLoading}
-            onOpenFile={setOpenWithFile}
-            language={language}
-            onRetryTask={handleRetryModel}
-          />
-        )}
-
-        {/* Temporary Subscription Overlay (from other tabs) */}
-        {activeTab === NavTab.SUBSCRIBE && tempSubscribeClose && (
-          <div className="absolute inset-0 z-[350] bg-black animate-in slide-in-from-bottom duration-500">
-            <Subscription 
-              isLoggedIn={isLoggedIn}
-              userTier={userTier} 
-              onSubscribeSuccess={(tier) => {
-                setUserTier(tier);
-                setCredits(prev => prev + (tier === 'pro' ? 1000 : 4000));
-                setShowSuccessModal(true);
-              }} 
-              credits={credits}
-              setCredits={setCredits}
-              showCloseButton={true}
-              onClose={() => {
-                setActiveTab(previousTab);
-                setTempSubscribeClose(false);
-              }}
-              onLoginTrigger={handleLoginTrigger}
+          {selectedImageContext && (
+            <ImageViewer 
+              images={selectedImageContext.images}
+              initialIndex={selectedImageContext.index}
+              onClose={() => setSelectedImageContext(null)}
+              onGenerate3D={handleGenerate3D}
+              onEditImage={handleEditImage}
               language={language}
-              onStartPayment={handleStartPayment}
             />
-          </div>
-        )}
+          )}
 
-        {selectedImageContext && (
-          <ImageViewer 
-            images={selectedImageContext.images}
-            initialIndex={selectedImageContext.index}
-            onClose={() => setSelectedImageContext(null)}
-            onGenerate3D={handleGenerate3D}
-            onEditImage={handleEditImage}
-            language={language}
-          />
-        )}
+          {showPrintPage && (
+            <PrintPage 
+              onClose={() => setShowPrintPage(false)} 
+              onOpenFile={(file) => {
+                setOpenWithFile(file);
+              }}
+              language={language} 
+            />
+          )}
+          
+          {showLoginModal && (
+            <LoginModal 
+              onClose={() => setShowLoginModal(false)} 
+              onLoginSuccess={handleLoginSuccess} 
+              language={language}
+            />
+          )}
 
-        {showPrintPage && (
-          <PrintPage 
-            onClose={() => setShowPrintPage(false)} 
-            onOpenFile={(file) => {
-              setOpenWithFile(file);
-            }}
-            language={language} 
-          />
-        )}
-        
-        {showLoginModal && (
-          <LoginModal 
-            onClose={() => setShowLoginModal(false)} 
-            onLoginSuccess={handleLoginSuccess} 
-            language={language}
-          />
-        )}
+          {openWithFile && (
+            <MockOpenWith 
+              fileName={openWithFile} 
+              onClose={() => setOpenWithFile(null)} 
+            />
+          )}
 
-        {openWithFile && (
-          <MockOpenWith 
-            fileName={openWithFile} 
-            onClose={() => setOpenWithFile(null)} 
-          />
-        )}
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-32 h-1 bg-neutral-700/60 rounded-full z-[100]"></div>
 
-        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-32 h-1 bg-neutral-700/60 rounded-full z-[100]"></div>
+          {renderPaymentOverlay()}
 
-        {renderPaymentOverlay()}
-
-        {showSuccessModal && (
-          <div className="absolute inset-0 z-[400] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
-             <div className="bg-neutral-900 border border-[#D0F870]/30 rounded-[40px] p-8 w-full flex flex-col items-center gap-6 shadow-2xl animate-in zoom-in-95 duration-300">
-                <div className="w-20 h-20 bg-[#D0F870] rounded-[30px] flex items-center justify-center shadow-[0_0_30px_rgba(208,248,112,0.4)]">
-                   <CheckCircle2 size={40} className="text-black" />
-                </div>
-                <div className="text-center space-y-3">
-                   <h2 className="text-xl font-black text-white uppercase tracking-tighter">{t.successTitle}</h2>
-                   <p className="text-neutral-300 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
-                     {t.successText}
-                   </p>
-                </div>
-                <button onClick={handleConfirmSuccess} className="w-full bg-[#D0F870] py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-black active:scale-95 transition-all shadow-lg shadow-[#D0F870]/20">
-                  {t.confirm}
-                </button>
-             </div>
-          </div>
-        )}
+          {showSuccessModal && (
+            <div className="absolute inset-0 z-[400] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
+               <div className="bg-neutral-900 border border-[#D0F870]/30 rounded-[40px] p-8 w-full flex flex-col items-center gap-6 shadow-2xl animate-in zoom-in-95 duration-300">
+                  <div className="w-20 h-20 bg-[#D0F870] rounded-[30px] flex items-center justify-center shadow-[0_0_30px_rgba(208,248,112,0.4)]">
+                     <CheckCircle2 size={40} className="text-black" />
+                  </div>
+                  <div className="text-center space-y-3">
+                     <h2 className="text-xl font-black text-white uppercase tracking-tighter">{t.successTitle}</h2>
+                     <p className="text-neutral-300 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
+                       {t.successText}
+                     </p>
+                  </div>
+                  <button onClick={handleConfirmSuccess} className="w-full bg-[#D0F870] py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-black active:scale-95 transition-all shadow-lg shadow-[#D0F870]/20">
+                    {t.confirm}
+                  </button>
+               </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

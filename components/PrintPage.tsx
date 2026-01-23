@@ -14,7 +14,7 @@ const PARTNERS = [
     icon: 'https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/72/c1/58/72c158ad-5cf7-0d5d-5151-b898b27dd693/Placeholder.mill/400x400bb-75.webp'
   },
   { 
-    name: 'BAMBU HANDY', 
+    name: 'BAMBU', 
     icon: 'https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/c6/3d/49/c63d494d-a5b9-19ad-cfd3-7fe3dc9f407b/AppIcon-0-0-1x_U007emarketing-0-8-0-85-220.png/400x400ia-75.webp'
   },
   { 
@@ -36,7 +36,7 @@ const PrintPage: React.FC<PrintPageProps> = ({ onClose, onOpenFile, language }) 
 
   const handlePartnerClick = (name: string) => {
     if (name === 'CREALITY CLOUD') {
-      onOpenFile('neural_structure_print.glb');
+      onOpenFile('structure_print.glb');
     } else {
       setTutorialPartner(name);
     }
@@ -46,7 +46,7 @@ const PrintPage: React.FC<PrintPageProps> = ({ onClose, onOpenFile, language }) 
     en: {
       connect: 'Connect Your Hardware',
       direct: 'Direct Manufacturing',
-      info: 'Meshy supports direct integration with top industrial slicing engines. Select your ecosystem to transmit neural data.',
+      info: 'Meshy supports direct integration with top industrial slicing engines. Select your ecosystem to transmit asset data.',
       back: 'Back to partners',
       step1: 'Step 1: Export Model',
       step1Desc: 'First, export your model to a supported format like .STL or .GLB.',
@@ -55,13 +55,13 @@ const PrintPage: React.FC<PrintPageProps> = ({ onClose, onOpenFile, language }) 
       step3: 'Step 3: Upload File',
       step3Desc: 'Navigate to upload and select the model from your mobile files.',
       step4: 'Step 4: Start Printing',
-      step4Desc: 'Configure your slicer settings and begin the neural fabrication!',
+      step4Desc: 'Configure your slicer settings and begin the fabrication!',
       gotit: 'Launch Protocol'
     },
     zh: {
       connect: '连接您的硬件设备',
       direct: '智能制造',
-      info: 'Meshy 支持与顶级工业切片引擎直接集成。选择您的生态系统以传输神经模型数据。',
+      info: 'Meshy 支持与顶级工业切片引擎直接集成。选择您的生态系统以传输 3D 模型数据。',
       back: '返回列表',
       step1: '步骤 1: 导出模型',
       step1Desc: '首先，将您的模型导出为 .STL 或 .GLB 等支持的格式。',
@@ -70,15 +70,21 @@ const PrintPage: React.FC<PrintPageProps> = ({ onClose, onOpenFile, language }) 
       step3: '步骤 3: 上传文件',
       step3Desc: '点击上传按钮并从手机文件中心选择已导出的模型。',
       step4: '步骤 4: 开始打印',
-      step4Desc: '配置切片设置，即刻开启神经网络物理制造！',
+      step4Desc: '配置切片设置，即刻开启物理制造！',
       gotit: '准备就绪'
     }
   }[language];
 
   if (tutorialPartner) {
+    const isBambu = tutorialPartner === 'BAMBU';
     const steps = [
       { id: 1, icon: Download, title: t.step1, desc: t.step1Desc },
-      { id: 2, icon: Smartphone, title: t.step2.replace('{partner}', tutorialPartner), desc: t.step2Desc.replace('{partner}', tutorialPartner) },
+      { 
+        id: 2, 
+        icon: Smartphone, 
+        title: isBambu ? (language === 'en' ? 'Step 2: Launch Bambu Studio' : '步骤 2: 启动 Bambu Studio') : t.step2.replace('{partner}', tutorialPartner), 
+        desc: isBambu ? (language === 'en' ? 'Manually launch the Bambu Studio Software on desktop side' : '在电脑端手动启动 Bambu Studio 软件') : t.step2Desc.replace('{partner}', tutorialPartner) 
+      },
       { id: 3, icon: UploadCloud, title: t.step3, desc: t.step3Desc },
       { id: 4, icon: Zap, title: t.step4, desc: t.step4Desc },
     ];

@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
-import { ASSETS_MODELS, EXPORTED_FILES, ASSETS_IMAGES, MESH_CREDIT_ICON } from '../constants';
-import { Model, NavTab, UserTier } from '../types';
+import React, { useState, useMemo } from 'react';
+import { ASSETS_MODELS, EXPORTED_FILES, ASSETS_IMAGES, MOCK_MODELS } from '../constants';
+import { Model, NavTab, UserTier, GenerationTask } from '../types';
 import { Clock, CheckCircle2, Loader2, MoreVertical, FileDown, Box, Image as ImageIcon, Sparkles, Plus, Check, Lock, User, Trash2 } from 'lucide-react';
 
 interface AssetsProps {
@@ -15,6 +15,7 @@ interface AssetsProps {
   onNavigateToCreate: (mode?: 'image3d' | 'genImage') => void;
   onOpenFile: (name: string) => void;
   language: 'en' | 'zh';
+  tasks: GenerationTask[];
 }
 
 const ImageWithPlaceholder: React.FC<{ src: string; alt: string; className?: string; onClick?: () => void }> = ({ src, alt, className, onClick }) => {
@@ -46,13 +47,12 @@ const Assets: React.FC<AssetsProps> = ({
   onImageClick, 
   onNavigateToCreate,
   onOpenFile,
-  language 
+  language,
+  tasks
 }) => {
   const [subTab, setSubTab] = useState<'models' | 'images' | 'exports'>('models');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [files, setFiles] = useState(EXPORTED_FILES);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [files, setFiles] = useState(EXPORTED_FILES);
 
   const t = {
     en: {
@@ -61,9 +61,10 @@ const Assets: React.FC<AssetsProps> = ({
       files: 'Files',
       createModels: 'Create more models',
       createImages: 'Create more images',
-      neuralMatrix: 'Neural Visual Matrix',
+      matrix: 'Visual Matrix',
       external: 'Open in External App',
       notLoggedIn: 'Sign in to view all your creation!',
+      notLoggedInSub: 'View, Export and Print your assets',
       signIn: 'Sign In',
       delete: 'Delete'
     },
@@ -73,29 +74,48 @@ const Assets: React.FC<AssetsProps> = ({
       files: '文件',
       createModels: '制作更多模型',
       createImages: '制作更多图片',
-      neuralMatrix: '神经视觉矩阵',
+      matrix: '视觉矩阵',
       external: '在外部应用中打开',
       notLoggedIn: '登录以查看您的所有创作！',
+      notLoggedInSub: '查看、导出并打印您的资产',
       signIn: '登录',
       delete: '删除'
     }
   }[language];
 
-  useEffect(() => {
-    if (isGenerating) {
-      const interval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setTimeout(() => setIsGenerating(false), 1000);
-            return 100;
-          }
-          return prev + 2;
-        });
-      }, 50);
-      return () => clearInterval(interval);
-    }
-  }, [isGenerating]);
+  // Map completed tasks to Model interface
+  const completedModelTasks = useMemo(() => {
+    return tasks
+      .filter(t => t.type === 'Model' && t.status === 'completed')
+      .map((task): Model => ({
+        id: task.id,
+        title: task.title,
+        thumbnail: task.thumbnail,
+        modelUrl: MOCK_MODELS[0].modelUrl,
+        author: { name: 'You', avatar: 'https://picsum.photos/seed/user/200/200' },
+        stats: { likes: 0, downloads: 0 },
+        tags: ['My Models'],
+        createdAt: task.createdAt || 'Just now',
+        size: '12.4 MB',
+        status: 'ready',
+        specs: { topology: 'Quads', faces: 85000, vertices: 43000 },
+        prompt: 'Generation from reference'
+      }));
+  }, [tasks]);
+
+  const completedImageTasks = useMemo(() => {
+    return tasks
+      .filter(t => t.type === 'Image' && t.status === 'completed')
+      .map(task => ({
+        id: task.id,
+        url: task.thumbnail,
+        title: task.title,
+        createdAt: task.createdAt || 'Just now'
+      }));
+  }, [tasks]);
+
+  const allModels = useMemo(() => [...completedModelTasks, ...ASSETS_MODELS], [completedModelTasks]);
+  const allImages = useMemo(() => [...completedImageTasks, ...ASSETS_IMAGES], [completedImageTasks]);
 
   const handleDeleteFile = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -125,7 +145,7 @@ const Assets: React.FC<AssetsProps> = ({
             {t.notLoggedIn}
           </h2>
           <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-[0.2em]">
-            Sync your neural assets across all platforms
+            {t.notLoggedInSub}
           </p>
         </div>
         <button 
@@ -146,16 +166,16 @@ const Assets: React.FC<AssetsProps> = ({
             { id: 'models', label: t.models, icon: Box },
             { id: 'images', label: t.images, icon: ImageIcon },
             { id: 'exports', label: t.files, icon: FileDown },
-          ].map(t => (
+          ].map(t_btn => (
             <button 
-              key={t.id}
-              onClick={() => setSubTab(t.id as any)}
+              key={t_btn.id}
+              onClick={() => setSubTab(t_btn.id as any)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                subTab === t.id ? 'bg-[#D0F870] text-black shadow-lg' : 'text-neutral-500'
+                subTab === t_btn.id ? 'bg-[#D0F870] text-black shadow-lg' : 'text-neutral-500'
               }`}
             >
-              <t.icon size={12} />
-              {t.label}
+              <t_btn.icon size={12} />
+              {t_btn.label}
             </button>
           ))}
         </div>
@@ -165,7 +185,7 @@ const Assets: React.FC<AssetsProps> = ({
         {subTab === 'models' && (
           <div className="flex flex-col gap-6">
             <div className="grid grid-cols-2 gap-4">
-              {ASSETS_MODELS.map((model) => (
+              {allModels.map((model) => (
                 <div 
                   key={model.id}
                   className={`group relative bg-neutral-950 rounded-[32px] overflow-hidden border border-white/5 transition-all active:scale-[0.98] flex flex-col shadow-2xl`}
@@ -206,10 +226,10 @@ const Assets: React.FC<AssetsProps> = ({
         {subTab === 'images' && (
           <div className="flex flex-col gap-6">
             <div className="grid grid-cols-2 gap-4">
-              {ASSETS_IMAGES.map((img) => (
+              {allImages.map((img) => (
                 <div 
                   key={img.id}
-                  onClick={() => onImageClick(img.url, img.title, ASSETS_IMAGES)}
+                  onClick={() => onImageClick(img.url, img.title, allImages)}
                   className="bg-neutral-900/60 rounded-[32px] overflow-hidden border border-white/5 group active:scale-[0.98] transition-all cursor-pointer"
                 >
                   <div className="aspect-square overflow-hidden">
@@ -280,28 +300,6 @@ const Assets: React.FC<AssetsProps> = ({
           </div>
         )}
       </div>
-
-      {isGenerating && (
-        <div className="absolute inset-0 z-[200] bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center p-10 animate-in fade-in duration-500">
-           <div className="relative w-48 h-48 mb-12">
-              <div className="absolute inset-0 border-[3px] border-[#D0F870]/10 rounded-full" />
-              <div className="absolute inset-0 border-[3px] border-transparent border-t-[#D0F870] rounded-full animate-spin" />
-              <div className="absolute inset-4 border border-[#D0F870]/5 rounded-full animate-pulse" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                 <div className="w-32 h-32 bg-[#D0F870]/20 rounded-full blur-2xl animate-pulse" />
-              </div>
-           </div>
-           <div className="w-full max-w-[280px] space-y-4">
-              <div className="flex justify-between items-end mb-1">
-                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-[#D0F870] animate-pulse">Neural Reconstructing</span>
-                 <span className="text-xs font-black text-white">{progress}%</span>
-              </div>
-              <div className="h-1.5 w-full bg-neutral-900 rounded-full overflow-hidden border border-white/5">
-                 <div className="h-full bg-[#D0F870] shadow-[0_0_10px_rgba(208,248,112,1)] transition-all duration-300" style={{ width: `${progress}%` }} />
-              </div>
-           </div>
-        </div>
-      )}
     </div>
   );
 };

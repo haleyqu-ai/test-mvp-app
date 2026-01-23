@@ -37,13 +37,13 @@ const Subscription: React.FC<SubscriptionProps> = ({
   const t = {
     en: {
       selectPlan: 'Select Plan',
-      unlock: 'Unlock full neural capacity',
+      unlock: 'Unlock full 3D power',
       freeTitle: 'Free',
       freePrice: '$0',
       proTitle: 'Pro',
       studioTitle: 'Studio',
       proSub: 'Advanced Generation Tools',
-      studioSub: 'Maximum Neural Output',
+      studioSub: 'Maximum Output',
       subscribe: 'Subscribe',
       recommended: 'Recommended',
       promoTag: 'SAVE 20% YEARLY',
@@ -64,13 +64,13 @@ const Subscription: React.FC<SubscriptionProps> = ({
     },
     zh: {
       selectPlan: '选择方案',
-      unlock: '开启全部神经算力',
+      unlock: '开启最强 3D 动力',
       freeTitle: '免费版',
       freePrice: '¥0',
       proTitle: '专业版',
       studioTitle: '旗舰版',
       proSub: '高级生成工具',
-      studioSub: '顶级神经算力输出',
+      studioSub: '顶级算力输出',
       subscribe: '订阅',
       recommended: '推荐方案',
       promoTag: '年度订阅立省 20%',
@@ -107,14 +107,16 @@ const Subscription: React.FC<SubscriptionProps> = ({
     '1,000 monthly credits',
     'Unlock all features on web & app',
     '10 tasks in queue',
-    '4 free retries for each task'
+    '4 free retries for each task',
+    'High generation speed'
   ];
   const studioFeatures = [
     '4,000 monthly credits',
     '20 tasks in queue',
     'Higher queue priority',
     '8 free retries for each task',
-    'Early access to new models'
+    'Early access to new models',
+    'Highest generation speed'
   ];
 
   const creditPacks = [
@@ -122,6 +124,9 @@ const Subscription: React.FC<SubscriptionProps> = ({
     { id: 'p2', amount: 1000, price: '$32.00', label: t.packMid },
     { id: 'p3', amount: 4000, price: '$96.00', label: t.packLarge, promo: 'BEST VALUE' }
   ];
+
+  const proCurrentPrice = billingCycle === 'monthly' ? 10 : 16;
+  const studioCurrentPrice = billingCycle === 'monthly' ? 60 : 48;
 
   return (
     <div className="flex flex-col h-full bg-meshy-dark overflow-y-auto pb-48 relative scroll-smooth hide-scrollbar">
@@ -224,8 +229,8 @@ const Subscription: React.FC<SubscriptionProps> = ({
                     className={`px-7 py-2.5 rounded-[16px] text-[10px] font-black uppercase tracking-widest transition-all duration-300 relative flex items-center gap-2 ${billingCycle === 'yearly' ? 'bg-[#D0F870] text-black shadow-lg shadow-[#D0F870]/20' : 'text-neutral-500'}`}
                   >
                     {t.yearly}
-                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${billingCycle === 'yearly' ? 'bg-black text-[#D0F870]' : 'bg-neutral-800 text-neutral-600'}`}>
-                      -20%
+                    <span className="text-[8px] font-black px-1.5 py-0.5 rounded-md bg-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.6)] whitespace-nowrap animate-pulse">
+                      20% Off
                     </span>
                   </button>
                 </div>
@@ -251,27 +256,29 @@ const Subscription: React.FC<SubscriptionProps> = ({
                     <h2 className={`text-2xl font-bold uppercase tracking-tight flex items-center gap-2 ${userTier === 'pro' ? 'text-[#D0F870]' : 'text-white'}`}>
                       PRO <Crown size={18} />
                     </h2>
-                    <p className="text-[10px] font-bold text-[#D0F870] uppercase tracking-wide opacity-80">{t.proSub}</p>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">${billingCycle === 'monthly' ? 10 : 16}</span>
+                    <span className="text-xl font-bold text-neutral-500 line-through mr-1">$20</span>
+                    <span className="text-4xl font-bold text-white">${proCurrentPrice}</span>
                     <span className="text-[10px] font-bold text-neutral-500">/mo</span>
                   </div>
                 </div>
                 <ul className="space-y-4 py-2 text-left">
                   {proFeatures.map(f => (
-                    <li key={f} className="flex items-center gap-3 text-[10px] font-bold text-neutral-300 tracking-wide">
-                      <Check size={14} className="text-[#D0F870] shrink-0" /> {f.toUpperCase()}
+                    <li key={f} className="flex items-center gap-3 text-[11px] font-bold text-neutral-300 tracking-wide">
+                      <Check size={14} className="text-[#D0F870] shrink-0" /> {f}
                     </li>
                   ))}
                 </ul>
-                <button 
-                  onClick={() => handleSubscribeTrigger(billingCycle === 'monthly' ? '$10.00' : '$192.00', 'pro')} 
-                  disabled={userTier === 'pro'}
-                  className={`w-full py-5 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all ${userTier === 'pro' ? 'bg-neutral-800 text-neutral-500' : 'bg-[#D0F870] text-black active:scale-[0.97] shadow-lg shadow-[#D0F870]/20'}`}
-                >
-                  {userTier === 'pro' ? t.currentPlan : t.subscribe}
-                </button>
+                <div className="relative">
+                  <button 
+                    onClick={() => handleSubscribeTrigger(billingCycle === 'monthly' ? '$10.00' : '$192.00', 'pro')} 
+                    disabled={userTier === 'pro'}
+                    className={`w-full py-5 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all relative ${userTier === 'pro' ? 'bg-neutral-800 text-neutral-500' : 'bg-[#D0F870] text-black active:scale-[0.97] shadow-lg shadow-[#D0F870]/20'}`}
+                  >
+                    {userTier === 'pro' ? t.currentPlan : t.subscribe}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -284,10 +291,10 @@ const Subscription: React.FC<SubscriptionProps> = ({
                 <span className="text-lg font-bold text-neutral-500">{t.freePrice}</span>
               </div>
               <ul className="flex flex-wrap gap-x-6 gap-y-2 text-left">
-                <li className="flex items-center gap-2 text-[9px] font-bold uppercase text-neutral-500 tracking-wide">
+                <li className="flex items-center gap-2 text-[10px] font-bold text-neutral-500 tracking-wide">
                   <Check size={12} className="text-neutral-700" /> 100 monthly credits
                 </li>
-                <li className="flex items-center gap-2 text-[9px] font-bold uppercase text-neutral-500 tracking-wide">
+                <li className="flex items-center gap-2 text-[10px] font-bold text-neutral-500 tracking-wide">
                   <Check size={12} className="text-neutral-700" /> 1 task in queue
                 </li>
               </ul>
@@ -303,17 +310,19 @@ const Subscription: React.FC<SubscriptionProps> = ({
                     <h2 className={`text-2xl font-bold uppercase tracking-tight flex items-center gap-2 ${userTier === 'studio' ? 'text-[#C084FC]' : 'text-white'}`}>
                       STUDIO <Star size={18} />
                     </h2>
-                    <p className="text-[10px] font-bold text-[#C084FC] uppercase tracking-wide opacity-80">{t.studioSub}</p>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">${billingCycle === 'monthly' ? 60 : 48}</span>
+                    {billingCycle === 'yearly' && (
+                      <span className="text-xl font-bold text-neutral-500 line-through mr-1">$60</span>
+                    )}
+                    <span className="text-4xl font-bold text-white">${studioCurrentPrice}</span>
                     <span className="text-[10px] font-bold text-neutral-500">/mo</span>
                   </div>
                 </div>
                 <ul className="space-y-4 py-2 text-left">
                   {studioFeatures.map(f => (
-                    <li key={f} className="flex items-center gap-3 text-[10px] font-bold text-neutral-300 tracking-wide">
-                      <Check size={14} className="text-[#C084FC] shrink-0" /> {f.toUpperCase()}
+                    <li key={f} className="flex items-center gap-3 text-[11px] font-bold text-neutral-300 tracking-wide">
+                      <Check size={14} className="text-[#C084FC] shrink-0" /> {f}
                     </li>
                   ))}
                 </ul>

@@ -6,7 +6,19 @@ import {
   Box, RefreshCw, Lock, ChevronDown, RotateCcw, Sparkles, Info, Cpu, Layers, Activity, Zap, Move, Terminal, Image as ImageIcon,
   Copy, MoreHorizontal, MessageCircle, Mail, Send, Airplay, MoveVertical
 } from 'lucide-react';
-import { MESH_CREDIT_ICON } from '../constants';
+import { MESHY_BRAND_LOGO } from '../constants';
+
+// Fix: Add intrinsic element definition for model-viewer to resolve TypeScript errors using React.JSX
+declare global {
+  namespace React.JSX {
+    interface IntrinsicElements {
+      'model-viewer': any;
+    }
+  }
+}
+
+// Updated Export Formats Order: 3mf, stl, fbx, obj, glb, usdz, Blend
+const EXPORT_FORMATS = ['3MF', 'STL', 'FBX', 'OBJ', 'GLB', 'USDZ', 'BLEND'];
 
 interface ModelViewerProps {
   model: Model;
@@ -25,8 +37,6 @@ interface ModelViewerProps {
   onOpenFile?: (name: string) => void;
   language: 'en' | 'zh';
 }
-
-const EXPORT_FORMATS = ['3mf', 'stl', 'fbx', 'obj', 'glb', 'usdz', 'Blend', 'Step'];
 
 const GestureHint: React.FC<{ language: 'en' | 'zh' }> = ({ language }) => {
   const t = {
@@ -150,6 +160,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const modelViewerRef = useRef<any>(null);
   const MODEL_URL = "https://modelviewer.dev/shared-assets/models/Astronaut.glb";
 
+  // Ensure retriesLeft is updated when userTier or model changes
+  useEffect(() => {
+    setRetriesLeft(maxRetries);
+  }, [userTier, model.id]);
+
   useEffect(() => {
     onLoadingChange?.(true);
     const viewer = modelViewerRef.current;
@@ -189,7 +204,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       if (viewer) viewer.removeEventListener('load', handleLoad);
       clearInterval(progressInterval);
     };
-  }, []);
+  }, [model.id]);
 
   const handleResetView = () => {
     const viewer = modelViewerRef.current;
@@ -203,12 +218,15 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   const handleRetry = () => {
     if (!isLoggedIn) { onLoginTrigger(); return; }
     if (userTier === 'free') { onUpgradeTrigger(); return; }
-    if (retriesLeft <= 0) return;
     
-    setRetriesLeft(prev => prev - 1);
-    
-    if (onRetryTask) {
-        onRetryTask(model);
+    if (retriesLeft > 0) {
+      setRetriesLeft(prev => prev - 1);
+      if (onRetryTask) {
+          onRetryTask(model);
+      }
+    } else {
+      // If user is paid but ran out of free retries, show message or trigger up-sell to Studio
+      alert(language === 'en' ? "You've used all free retries for this task." : "您已用完该任务的所有免费重试次数。");
     }
   };
 
@@ -245,7 +263,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
         ? (userTier === 'free' ? 'Free Retry' : `Free Retry (${retriesLeft}/${maxRetries})`) 
         : 'Remix', 
       primary: true, 
-      // Changed restricted: true to only be true when in Workspace Mode (Retry action)
       restricted: isWorkspaceMode,
       action: isWorkspaceMode ? handleRetry : () => onRemix(model),
       disabled: isWorkspaceMode && userTier !== 'free' && retriesLeft <= 0
@@ -292,7 +309,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
         {loading && (
           <div className="absolute inset-0 z-[150] flex flex-col items-center justify-center bg-black px-12 animate-in fade-in duration-300">
              <div className="relative mb-14" style={{ perspective: '1000px' }}>
-                {/* Updated Loader with Colorful Logo and Horizontal Rotation */}
                 <div className="relative w-40 h-40 flex items-center justify-center animate-[rotate-y-smooth_4s_linear_infinite]" style={{ transformStyle: 'preserve-3d' }}>
                   <div className="absolute top-[80%] left-1/2 -translate-x-1/2 w-32 h-32 bg-neutral-900/50 rounded-xl border border-[#D0F870]/20" style={{ 
                     transform: 'rotateX(80deg) translateZ(-40px)',
@@ -300,7 +316,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
                     backgroundSize: '8px 8px'
                   }} />
                   <div className="relative w-32 h-32 flex items-center justify-center">
-                    <img src={MESH_CREDIT_ICON} className="w-full h-full object-contain filter brightness-[1.1] contrast-[1.1] drop-shadow-[0_0_20px_rgba(208,248,112,0.6)]" alt="" />
+                    <img src={MESHY_BRAND_LOGO} className="w-full h-full object-contain filter brightness-[1.1] contrast-[1.1] drop-shadow-[0_0_20px_rgba(208,248,112,0.6)]" alt="" />
                     <div className="absolute inset-x-0 h-[2px] bg-[#D0F870] shadow-[0_0_15px_#D0F870] opacity-80 animate-[scan-y_2.5s_ease-in-out_infinite]" style={{ transform: 'translateZ(20px)' }} />
                   </div>
                 </div>
@@ -308,7 +324,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
              </div>
              <div className="w-full space-y-4 max-w-[260px]">
                 <div className="flex justify-between items-end">
-                  <span className="text-[10px] text-[#D0F870] font-black uppercase tracking-[0.4em] animate-pulse">Neural Reconstructing</span>
+                  <span className="text-[10px] text-[#D0F870] font-black uppercase tracking-[0.4em] animate-pulse">loading</span>
                   <span className="text-xl font-black text-white tabular-nums">{Math.floor(progress)}%</span>
                 </div>
                 <div className="h-1 w-full bg-neutral-900 rounded-full overflow-hidden border border-white/5 relative">
@@ -336,7 +352,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
 
         {!loading && (
           <div className={`absolute right-6 flex flex-col gap-3 z-[120] transition-all duration-300 ${isFullscreen ? 'top-12' : 'top-6'}`}>
-            <button onClick={handleResetView} className="p-3 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-xl text-[#D0F870] active:scale-90 flex items-center justify-center">
+            <button onClick={handleResetView} className="p-3 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-xl text-white active:scale-90 flex items-center justify-center">
               <RotateCcw size={18} />
             </button>
             <button onClick={() => setIsFullscreen(!isFullscreen)} className="p-3 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-xl text-white active:scale-90">
@@ -376,21 +392,21 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
           <div className="w-full h-[85%] bg-[#111] rounded-t-[48px] p-8 pb-12 animate-slide-up border-t border-white/10 flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="w-12 h-1 bg-neutral-800 rounded-full mx-auto mb-8 shrink-0" />
             <div className="flex items-center justify-between mb-6 shrink-0">
-               <h3 className="text-xl font-black text-white uppercase tracking-tighter">Asset Intelligence</h3>
+               <h3 className="text-xl font-black text-white uppercase tracking-tighter">Asset Info</h3>
                <button onClick={() => setShowInfo(false)} className="p-2 bg-neutral-900 rounded-full text-neutral-500"><X size={16}/></button>
             </div>
             <div className="flex-1 overflow-y-auto space-y-8 hide-scrollbar">
               <div className="space-y-4">
                  <div className="flex items-center gap-2 px-1">
                     <Sparkles size={14} className="text-[#D0F870]" />
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">DNA</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">DATA</h4>
                  </div>
                  <div className="space-y-4">
                     <div className="bg-neutral-900/40 rounded-3xl border border-white/5 p-5 flex items-center gap-5">
                        <img src={model.thumbnail} className="w-20 h-20 rounded-2xl object-cover border border-white/10" alt="Ref" />
                        <div className="flex flex-col gap-1">
                           <p className="text-[9px] font-black uppercase text-neutral-500 tracking-widest">Reference</p>
-                          <p className="text-[10px] font-bold text-white uppercase tracking-tight">Neural Source</p>
+                          <p className="text-[10px] font-bold text-white uppercase tracking-tight">Source</p>
                        </div>
                     </div>
                     <div className="bg-neutral-900/40 rounded-3xl border border-white/5 p-5 space-y-2">

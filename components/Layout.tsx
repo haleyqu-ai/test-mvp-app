@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { NavTab } from '../types';
+import { NavTab, UserTier } from '../types';
 import { Compass, FolderOpen, Plus, CreditCard, User } from 'lucide-react';
 
 interface LayoutProps {
@@ -9,9 +9,19 @@ interface LayoutProps {
   onTabChange: (tab: NavTab) => void;
   language: 'en' | 'zh';
   hideNav?: boolean;
+  isLoggedIn: boolean;
+  userTier: UserTier;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, language, hideNav }) => {
+const Layout: React.FC<LayoutProps> = ({ 
+  children, 
+  activeTab, 
+  onTabChange, 
+  language, 
+  hideNav,
+  isLoggedIn,
+  userTier
+}) => {
   const t = {
     en: {
       explore: 'Explore',
@@ -36,6 +46,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, langu
     { id: NavTab.SUBSCRIBE, icon: CreditCard, label: t.subscribe },
     { id: NavTab.ME, icon: User, label: t.me },
   ];
+
+  // Logic: Show discount badge only if user is NOT a paid subscriber
+  const showDiscountBadge = !isLoggedIn || userTier === 'free';
 
   return (
     <div className="flex-1 flex flex-col relative h-full w-full overflow-hidden bg-transparent">
@@ -67,7 +80,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, langu
                     strokeWidth={3} 
                   />
                 </div>
-                <span className={`text-[8px] font-black uppercase tracking-[0.2em] mt-2 transition-all duration-300 ${
+                <span className={`text-[10px] font-bold mt-2 transition-all duration-300 ${
                   isActive ? 'text-[#D0F870] opacity-100' : 'text-white/80'
                 }`}>
                   {tab.label}
@@ -83,14 +96,21 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, langu
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`flex flex-col items-center gap-1.5 transition-all duration-300 pb-2 ${
+              className={`flex flex-col items-center gap-1.5 transition-all duration-300 pb-2 relative ${
                 isActive ? 'text-[#D0F870] scale-110' : 'text-white/90 hover:text-white'
               }`}
             >
               <div className={`relative ${isActive ? 'drop-shadow-[0_0_8px_rgba(208,248,112,0.4)]' : ''}`}>
                 <Icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
+                
+                {/* 50% OFF Discount Badge for Subscribe Tab - Only shown for potential customers */}
+                {tab.id === NavTab.SUBSCRIBE && showDiscountBadge && (
+                  <div className="absolute -top-2 -right-6 bg-red-600 text-white text-[6px] font-black px-1 py-0.5 rounded shadow-[0_2px_6px_rgba(220,38,38,0.5)] animate-pulse whitespace-nowrap">
+                    50% OFF
+                  </div>
+                )}
               </div>
-              <span className={`text-[7px] font-black uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-90'}`}>
+              <span className={`text-[10px] font-bold ${isActive ? 'opacity-100' : 'opacity-90'}`}>
                 {tab.label}
               </span>
             </button>

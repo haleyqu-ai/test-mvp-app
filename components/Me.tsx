@@ -30,20 +30,20 @@ const Me: React.FC<MeProps> = ({
   const t = {
     en: {
       joined: 'Joined at Mar 24, 2024',
-      guest: 'Guest Protocol',
+      guest: 'Guest Mode',
       guestSub: 'Sign in to start your 3D creation',
       signIn: 'Sign Up / Sign In',
-      plan: 'Active Plan',
+      plan: 'Current Plan',
       credits: 'Credits',
-      config: 'Neural Configuration',
       logout: 'Log Out',
       lang: 'Language',
       terms: 'Terms of Service',
       privacy: 'Privacy Policy',
       acceptable: 'Acceptable Use Policy',
-      contact: 'Contact us',
-      selectLang: 'Select Interface Language',
-      comingSoon: 'Soon'
+      contact: 'Contact Us',
+      selectLang: 'Select Language',
+      comingSoon: 'Soon',
+      version: 'App version: Prod 1'
     },
     zh: {
       joined: '加入于 2024年3月24日',
@@ -52,7 +52,6 @@ const Me: React.FC<MeProps> = ({
       signIn: '注册 / 登录',
       plan: '当前方案',
       credits: '积分余额',
-      config: '神经网络配置',
       logout: '退出登录',
       lang: '语言',
       terms: '服务条款',
@@ -60,7 +59,8 @@ const Me: React.FC<MeProps> = ({
       acceptable: '合理使用政策',
       contact: '联系我们',
       selectLang: '选择界面语言',
-      comingSoon: '敬请期待'
+      comingSoon: '敬请期待',
+      version: '版本: Prod 1'
     }
   }[language];
 
@@ -68,17 +68,17 @@ const Me: React.FC<MeProps> = ({
     { id: 'en', label: 'English', sub: 'Standard', active: true },
     { id: 'zh', label: '简体中文', sub: '标准接口', active: true },
     { id: 'es', label: 'Español', sub: 'Interfaz de red', active: false },
-    { id: 'fr', label: 'Français', sub: 'Interface neurale', active: false },
-    { id: 'de', label: 'Deutsch', sub: 'Neurales Interface', active: false },
+    { id: 'fr', label: 'Français', sub: 'Standard', active: false },
+    { id: 'de', label: 'Deutsch', sub: 'Standard', active: false },
     { id: 'ja', label: '日本語', sub: '标准接口', active: false },
     { id: 'ko', label: '한국어', sub: '표준 인터페이스', active: false },
-    { id: 'pt', label: 'Português', sub: 'Interface neural', active: false },
-    { id: 'ru', label: 'Русский', sub: 'Нейронный интерфейс', active: false },
-    { id: 'it', label: 'Italiano', sub: 'Interfaccia neurale', active: false },
+    { id: 'pt', label: 'Português', sub: 'Standard', active: false },
+    { id: 'ru', label: 'Русский', sub: 'Стандартный', active: false },
+    { id: 'it', label: 'Italiano', sub: 'Standard', active: false },
     { id: 'ar', label: 'العربية', sub: 'واجهة عصبية', active: false },
-    { id: 'hi', label: 'हिन्दी', sub: 'तंत्रिका इंटरफ़ेस', active: false },
-    { id: 'tr', label: 'Türkçe', sub: 'Nöral Arayüz', active: false },
-    { id: 'vi', label: 'Tiếng Việt', sub: 'Giao diện thần kinh', active: false },
+    { id: 'hi', label: 'हिन्दी', sub: 'तंत्रica इंटरफ़ेस', active: false },
+    { id: 'tr', label: 'Türkçe', sub: 'Standart Arayüz', active: false },
+    { id: 'vi', label: 'Tiếng Việt', sub: 'Giao diện chuẩn', active: false },
   ];
 
   const menuItems = [
@@ -122,9 +122,10 @@ const Me: React.FC<MeProps> = ({
     }
   };
 
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
   return (
     <div className="flex flex-col h-full bg-meshy-dark relative">
-      {/* Scrollable Wrapper for the whole page */}
       <div className="flex-1 overflow-y-auto hide-scrollbar pb-40">
         {!isLoggedIn ? (
           <header className="px-8 pt-20 pb-12 text-center flex flex-col items-center gap-7">
@@ -138,10 +139,10 @@ const Me: React.FC<MeProps> = ({
                </div>
             </div>
             <div className="space-y-1.5">
-              <h1 className="text-2xl font-black text-white uppercase tracking-tighter">{t.guest}</h1>
-              <p className="text-neutral-500 text-[10px] font-bold uppercase tracking-[0.2em] leading-relaxed opacity-70">{t.guestSub}</p>
+              <h1 className="text-2xl font-bold text-white">{t.guest}</h1>
+              <p className="text-neutral-500 text-[11px] font-medium opacity-70">{t.guestSub}</p>
             </div>
-            <button onClick={onLoginClick} className="w-[80%] mx-auto bg-[#D0F870] py-5 rounded-[28px] text-black font-black text-xs uppercase tracking-[0.25em] shadow-[0_15px_30px_rgba(208,248,112,0.2)] active:scale-95 transition-all">{t.signIn}</button>
+            <button onClick={onLoginClick} className="w-[80%] mx-auto bg-[#D0F870] py-5 rounded-[28px] text-black font-bold text-sm shadow-[0_15px_30px_rgba(208,248,112,0.2)] active:scale-95 transition-all">{t.signIn}</button>
           </header>
         ) : (
           <header className="px-8 py-10 bg-gradient-to-b from-neutral-900/40 to-transparent relative">
@@ -151,9 +152,9 @@ const Me: React.FC<MeProps> = ({
                 <img src="https://picsum.photos/seed/user/200/200" className="w-16 h-16 rounded-[20px] border-3 border-black relative z-10 object-cover shadow-2xl" alt="" />
               </div>
               <div className="flex flex-col">
-                <h1 className="text-lg font-black text-white uppercase tracking-tighter">Chunming Qu</h1>
+                <h1 className="text-lg font-bold text-white tracking-tight">Chunming Qu</h1>
                 <div className="flex flex-col gap-0.5">
-                  <p className="text-[#D0F870] text-[8px] font-black uppercase tracking-[0.2em]">{t.joined}</p>
+                  <p className="text-[#D0F870] text-[10px] font-medium">{t.joined}</p>
                 </div>
               </div>
             </div>
@@ -163,9 +164,9 @@ const Me: React.FC<MeProps> = ({
                  onClick={onUpgradeTrigger}
                  className="bg-neutral-950/40 backdrop-blur-md border border-white/5 rounded-[32px] p-5 flex flex-col items-start gap-1 transition-all active:scale-[0.96] active:bg-neutral-900 shadow-2xl text-left"
                >
-                  <p className="text-[10px] text-neutral-500 font-black uppercase tracking-[0.15em] mb-1">{t.plan}</p>
-                  <p className="text-2xl font-black uppercase tracking-tighter text-white">
-                    {userTier.toUpperCase()}
+                  <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-1">{t.plan}</p>
+                  <p className="text-2xl font-black tracking-tight text-white">
+                    {capitalize(userTier)}
                   </p>
                </button>
                
@@ -174,7 +175,7 @@ const Me: React.FC<MeProps> = ({
                  className="bg-neutral-950/40 backdrop-blur-md border border-white/5 rounded-[32px] p-5 flex flex-col items-start gap-1 transition-all active:scale-[0.96] active:bg-neutral-900 shadow-2xl text-left relative"
                >
                   <div className="flex items-center justify-between w-full mb-1">
-                    <p className="text-[10px] text-neutral-500 font-black uppercase tracking-[0.15em]">{t.credits}</p>
+                    <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">{t.credits}</p>
                     <img src={MESH_CREDIT_ICON} className="w-4 h-4 object-contain drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]" alt="" />
                   </div>
                   <p className="text-2xl font-black text-white tracking-tighter tabular-nums">{credits.toLocaleString()}</p>
@@ -185,7 +186,6 @@ const Me: React.FC<MeProps> = ({
 
         <div className="px-6 space-y-10 pt-4">
           <div className="space-y-4">
-            <p className="text-[9px] font-black uppercase tracking-[0.4em] text-neutral-600 ml-5">{t.config}</p>
             <div className="bg-neutral-900/30 backdrop-blur-md border border-white/5 rounded-[40px] overflow-hidden">
               {menuItems.map((item, i) => (
                 <button 
@@ -197,10 +197,10 @@ const Me: React.FC<MeProps> = ({
                     <div className="p-2 bg-neutral-800/40 rounded-xl text-neutral-400 border border-white/5 flex items-center justify-center w-9 h-9">
                       <item.icon size={16} />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-neutral-200">{item.label}</span>
+                    <span className="text-[11px] font-bold text-neutral-200">{item.label}</span>
                   </div>
                   <div className="flex items-center gap-4 text-neutral-600">
-                    {item.extra && <span className="text-[9px] font-black uppercase tracking-tighter text-[#D0F870]/80">{item.extra}</span>}
+                    {item.extra && <span className="text-[10px] font-bold text-[#D0F870]/80">{item.extra}</span>}
                     <ChevronRight size={14} />
                   </div>
                 </button>
@@ -208,23 +208,22 @@ const Me: React.FC<MeProps> = ({
             </div>
           </div>
           {isLoggedIn && (
-            <button onClick={onLogout} className="w-full flex items-center justify-center gap-3 py-5 text-rose-500 font-black text-[12px] uppercase tracking-[0.25em] bg-rose-500/10 rounded-[30px] border border-rose-500/20 active:scale-[0.97] transition-all"><LogOut size={18} />{t.logout}</button>
+            <button onClick={onLogout} className="w-full flex items-center justify-center gap-3 py-5 text-rose-500 font-bold text-sm bg-rose-500/10 rounded-[30px] border border-rose-500/20 active:scale-[0.97] transition-all"><LogOut size={18} /> {t.logout}</button>
           )}
           <div className="text-center pb-6 opacity-30">
-            <p className="text-[7px] font-black text-neutral-500 uppercase tracking-[0.5em]">
-              {language === 'en' ? 'app version: v1.0.0' : 'app 版本: v1.0.0'}
+            <p className="text-[8px] font-bold text-neutral-600 uppercase tracking-[0.4em]">
+              {t.version}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Language Picker stays fixed/absolute relative to the mock viewport */}
       {showLangPicker && (
         <div className="absolute inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end animate-in fade-in duration-300" onClick={() => setShowLangPicker(false)}>
           <div className="w-full h-[85%] bg-[#111] rounded-t-[48px] p-8 pb-12 animate-slide-up border-t border-white/10 flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="w-12 h-1 bg-neutral-800 rounded-full mx-auto mb-8 shrink-0" />
             <div className="flex items-center justify-between mb-8 shrink-0">
-              <h3 className="text-xl font-black text-white uppercase tracking-tighter">{t.selectLang}</h3>
+              <h3 className="text-xl font-bold text-white">{t.selectLang}</h3>
               <button onClick={() => setShowLangPicker(false)} className="p-2 bg-neutral-900 rounded-full text-neutral-500"><X size={16}/></button>
             </div>
             <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-3 pb-8">
@@ -244,10 +243,10 @@ const Me: React.FC<MeProps> = ({
                   }`}
                 >
                   <div className="text-left">
-                    <p className={`text-sm font-black uppercase tracking-widest ${language === lang.id ? 'text-[#D0F870]' : 'text-white'}`}>
+                    <p className={`text-sm font-bold ${language === lang.id ? 'text-[#D0F870]' : 'text-white'}`}>
                       {lang.label}
                     </p>
-                    <p className="text-[9px] font-bold text-neutral-600 uppercase tracking-tighter mt-1">{lang.sub}</p>
+                    <p className="text-[10px] font-medium text-neutral-600 mt-1">{lang.sub}</p>
                   </div>
                   {language === lang.id ? (
                     <div className="w-10 h-10 bg-[#D0F870] rounded-full flex items-center justify-center text-black">
@@ -256,7 +255,7 @@ const Me: React.FC<MeProps> = ({
                   ) : !lang.active && (
                     <div className="px-3 py-1 bg-neutral-800 rounded-full border border-white/5 flex items-center gap-1.5">
                        <Hourglass size={10} className="text-neutral-500" />
-                       <span className="text-[7px] font-black text-neutral-500 uppercase tracking-widest">{t.comingSoon}</span>
+                       <span className="text-[8px] font-bold text-neutral-500">{t.comingSoon}</span>
                     </div>
                   )}
                 </button>

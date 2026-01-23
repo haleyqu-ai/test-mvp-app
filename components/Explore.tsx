@@ -68,11 +68,17 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick, onNavigateToCreate, lan
   const horizontalScrollRef = useRef<HTMLDivElement>(null);
   const verticalScrollRef = useRef<HTMLDivElement>(null);
   
+  // Dragging state
   const isDraggingH = useRef(false);
   const isDraggingV = useRef(false);
-  
   const startPosH = useRef({ x: 0, scrollLeft: 0 });
   const startPosV = useRef({ y: 0, scrollTop: 0 });
+  
+  // Momentum state
+  const lastY = useRef(0);
+  const lastTime = useRef(0);
+  const velocityV = useRef(0);
+  const animationFrameRef = useRef<number | null>(null);
 
   const t = {
     en: {
@@ -122,7 +128,7 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick, onNavigateToCreate, lan
     }
   }, [activeChannel]);
 
-  // Horizontal Dragging Logic
+  // Horizontal Dragging Logic (Simpler)
   const handleHorizontalMouseDown = (e: React.MouseEvent) => {
     const slider = horizontalScrollRef.current;
     if (!slider) return;
@@ -133,7 +139,7 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick, onNavigateToCreate, lan
     };
     slider.style.cursor = 'grabbing';
     slider.style.userSelect = 'none';
-    e.stopPropagation(); // Prevent vertical container from firing
+    e.stopPropagation();
   };
 
   const handleHorizontalMouseMove = (e: React.MouseEvent) => {
@@ -144,29 +150,83 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick, onNavigateToCreate, lan
     horizontalScrollRef.current.scrollLeft = startPosH.current.scrollLeft - walk;
   };
 
-  // Vertical Dragging Logic
+  // Vertical Inertial Dragging Logic
   const handleVerticalMouseDown = (e: React.MouseEvent) => {
     const container = verticalScrollRef.current;
     if (!container) return;
+    
+    // Stop any existing momentum animation
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
     isDraggingV.current = true;
     startPosV.current = {
       y: e.pageY - container.offsetTop,
       scrollTop: container.scrollTop
     };
+    
+    lastY.current = e.pageY;
+    lastTime.current = Date.now();
+    velocityV.current = 0;
+    
     container.style.cursor = 'grabbing';
     container.style.userSelect = 'none';
   };
 
   const handleVerticalMouseMove = (e: React.MouseEvent) => {
     if (!isDraggingV.current || !verticalScrollRef.current) return;
-    const y = e.pageY - verticalScrollRef.current.offsetTop;
-    const walk = (y - startPosV.current.y) * 1.5;
-    verticalScrollRef.current.scrollTop = startPosV.current.scrollTop - walk;
+    
+    const container = verticalScrollRef.current;
+    const currentTime = Date.now();
+    const timeDelta = currentTime - lastTime.current;
+    
+    if (timeDelta > 0) {
+      const yDelta = e.pageY - lastY.current;
+      // Calculate velocity (pixels per millisecond)
+      velocityV.current = yDelta / timeDelta;
+      
+      lastY.current = e.pageY;
+      lastTime.current = currentTime;
+    }
+
+    const y = e.pageY - container.offsetTop;
+    const walk = (y - startPosV.current.y) * 1.0; // 1:1 ratio for direct follow
+    container.scrollTop = startPosV.current.scrollTop - walk;
+  };
+
+  const applyMomentum = () => {
+    if (!verticalScrollRef.current) return;
+    
+    const friction = 0.96; // Adjust for how slippery it feels
+    const stopThreshold = 0.1;
+    
+    const step = () => {
+      if (!verticalScrollRef.current) return;
+      
+      verticalScrollRef.current.scrollTop -= velocityV.current * 16; // multiplier for frame time
+      velocityV.current *= friction;
+
+      if (Math.abs(velocityV.current) > stopThreshold) {
+        animationFrameRef.current = requestAnimationFrame(step);
+      } else {
+        velocityV.current = 0;
+        animationFrameRef.current = null;
+      }
+    };
+    
+    animationFrameRef.current = requestAnimationFrame(step);
   };
 
   const handleGlobalMouseUp = () => {
+    if (isDraggingV.current) {
+      applyMomentum();
+    }
+    
     isDraggingH.current = false;
     isDraggingV.current = false;
+    
     if (horizontalScrollRef.current) {
       horizontalScrollRef.current.style.cursor = 'grab';
       horizontalScrollRef.current.style.removeProperty('user-select');
@@ -186,10 +246,14 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick, onNavigateToCreate, lan
   };
 
   const handleModelClickThrottled = (model: Model, e: React.MouseEvent) => {
+    // If we're moving fast, don't trigger click
+    if (Math.abs(velocityV.current) > 0.5) return;
+    
     if (!verticalScrollRef.current) return;
     const y = e.pageY - verticalScrollRef.current.offsetTop;
     const moveY = Math.abs(y - startPosV.current.y);
-    if (moveY > 5) return;
+    if (moveY > 8) return; // Allow for slight tremor on touch release
+    
     onModelClick(model, false);
   };
 
@@ -203,14 +267,14 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick, onNavigateToCreate, lan
         ref={verticalScrollRef}
         onMouseDown={handleVerticalMouseDown}
         onMouseMove={handleVerticalMouseMove}
-        className="flex-1 overflow-y-auto hide-scrollbar select-none cursor-default scroll-smooth"
+        className="flex-1 overflow-y-auto hide-scrollbar select-none cursor-default"
       >
         {/* Header content that scrolls away */}
         <div className="pt-4 pb-4 px-4 flex gap-3">
           <button 
             onMouseUp={(e) => {
                const y = e.pageY - (verticalScrollRef.current?.offsetTop || 0);
-               if (Math.abs(y - startPosV.current.y) <= 5) onNavigateToCreate('image3d');
+               if (Math.abs(y - startPosV.current.y) <= 8 && Math.abs(velocityV.current) < 0.2) onNavigateToCreate('image3d');
             }}
             className="flex-1 h-14 bg-neutral-900/60 border border-white/5 rounded-2xl flex items-center justify-center gap-2.5 active:scale-[0.97] active:bg-neutral-800 transition-all group overflow-hidden relative cursor-pointer"
           >
@@ -221,7 +285,7 @@ const Explore: React.FC<ExploreProps> = ({ onModelClick, onNavigateToCreate, lan
           <button 
             onMouseUp={(e) => {
               const y = e.pageY - (verticalScrollRef.current?.offsetTop || 0);
-              if (Math.abs(y - startPosV.current.y) <= 5) onNavigateToCreate('genImage');
+              if (Math.abs(y - startPosV.current.y) <= 8 && Math.abs(velocityV.current) < 0.2) onNavigateToCreate('genImage');
             }}
             className="flex-1 h-14 bg-neutral-900/60 border border-white/5 rounded-2xl flex items-center justify-center gap-2.5 active:scale-[0.97] active:bg-neutral-800 transition-all group overflow-hidden relative cursor-pointer"
           >
